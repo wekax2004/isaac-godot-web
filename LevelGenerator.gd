@@ -38,6 +38,7 @@ func generate_floor() -> void:
 		
 	# The last room logically instantiated is the Boss room.
 	# Or, you can find the furthest leaf node like we did in JS!
+	var final_pos = walker_pos
 	
 	# 2. Instantiate the actual visual Room nodes
 	for layout_pos in logical_map.keys():
@@ -46,6 +47,10 @@ func generate_floor() -> void:
 		# Space them out visually in Godot's world relative to their (0,0) index
 		room_instance.position = layout_pos * room_size
 		room_instance.grid_pos = layout_pos
+		
+		if layout_pos == final_pos:
+			room_instance.is_boss_room = true
+			
 		add_child(room_instance)
 		
 		room_grid[layout_pos] = room_instance

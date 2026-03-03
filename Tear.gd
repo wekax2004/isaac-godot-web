@@ -9,6 +9,8 @@ var is_homing: bool = false
 var is_piercing: bool = false
 var color_override: Color = Color.WHITE
 
+@export var shoot_sound: AudioStream # E.g., a "pew.wav"
+
 @onready var sprite = $Sprite2D
 
 func _ready() -> void:
@@ -19,6 +21,14 @@ func _ready() -> void:
 	var notifier = $VisibleOnScreenNotifier2D
 	if notifier:
 		notifier.screen_exited.connect(_on_screen_exited)
+		
+	# Play shoot sound on spawn
+	if shoot_sound:
+		var audio_player = AudioStreamPlayer2D.new()
+		audio_player.stream = shoot_sound
+		audio_player.bus = "SFX"
+		add_child(audio_player)
+		audio_player.play()
 
 func _physics_process(delta: float) -> void:
 	# Add logic for Spoon Bender homing effect!

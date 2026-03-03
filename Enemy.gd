@@ -7,6 +7,10 @@ enum State { WANDER, CHASE }
 @export var max_health: int = 3
 @export var chase_range: float = 300.0
 
+# --- NEW: Phase 12 Game Feel ---
+@export var splatter_scene: PackedScene # Drag BloodSplatter.tscn here
+@export var hit_sound: AudioStream # E.g., a fleshy "thwack.wav"
+
 var current_health: int
 var current_state: State = State.WANDER
 var player_ref: Node2D
@@ -88,6 +92,26 @@ func _on_hitbox_area_entered(area: Area2D) -> void:
 
 func take_damage(amount: int) -> void:
 	current_health -= amount
+	
+	# --- NEW: Phase 12 Game Feel ---
+	# 1. Spawn Visual Blood Splatter
+	if splatter_scene:
+		var splatter = splatter_scene.instantiate()
+		splatter.global_position = global_position
+		# Add to the root level instead of the enemy so it doesn't move with the enemy or vanish when the enemy queue_frees
+		get_tree().root.add_child(splatter)
+		
+	# 2. Play Audio Impact
+	# We can use a temporary AudioStreamPlayer2D to play the sound and free itself
+	if hit_sound:
+		var audio_player = AudioStreamPlayer2D.new()
+		audio_player.stream = hit_sound
+		audio_player.bus = "SFX" # Ensure this matches your Audio Bus layout!
+		audio_player.global_position = global_position
+		# Auto-destroy when sound finishes
+		audio_player.finished.connect(audio_player.queue_free)
+		get_tree().root.add_child(audio_player)
+		audio_player.play()
 	
 	# Visual feedback: Flash red briefly
 	sprite.modulate = Color(1, 0, 0)
