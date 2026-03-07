@@ -1,121 +1,294 @@
 extends CharacterBody2D
-class_name Boss
 
-signal boss_health_changed(current: int, maximum: int)
+signal health_changed(current: float, max: float)
 signal boss_defeated
 
-enum State { PHASE_1_SHOOT, PHASE_2_CHARGE }
+enum BossType { MONSTRO, DUKE_OF_FLIES }
+enum State { IDLE, SHOOT_RING, DASH, SUMMON, ORBIT }
 
-@export var max_health: int = 100
-@export var bullet_scene: PackedScene # The boss needs its own hostile tear scene
-@export var charge_speed: float = 400.0
+@export var boss_type: BossType = BossType.MONSTRO
 
-var current_health: int
-var current_state: State = State.PHASE_1_SHOOT
-var player_ref: Node2D
+var max_health: float = 150.0
+var health: float = 150.0
+var move_speed: float = 60.0
+var contact_damage: int = 2
 
-@onready var sprite = $Sprite2D
-@onready var shoot_timer = Timer.new()
-@onready var charge_timer = Timer.new()
+var player: Node2D = null
+var current_state: State = State.IDLE
+var state_timer: float = 2.0
+var dash_target: Vector2 = Vector2.ZERO
+var flash_timer: float = 0.0
+@onready var sprite = $Sprite2D # Assuming a Sprite2D child exists or adding it
 
-var is_charging: bool = false
-var charge_direction: Vector2 = Vector2.ZERO
+# Damage-over-Time (DoT) System
+var dot_dps: float = 0.0
+var dot_timer: float = 0.0
+var is_dot_active: bool = false
+var dot_color: Color = Color.WHITE
+var dot_tick_timer: float = 0.0 # Consistency with Enemy.gd
+
+var bullet_scene: PackedScene = preload("res://EnemyBullet.tscn")
+var item_scene: PackedScene = preload("res://Item.tscn")
+var enemy_scene: PackedScene = preload("res://Enemy.tscn") # For summoning flies
 
 func _ready() -> void:
-	current_health = max_health
-	player_ref = get_tree().get_first_node_in_group("player")
+	add_to_group("enemies") # so player bullets can hit it
+	add_to_group("boss") # so HUD can find it
+	queue_redraw()
 	
-	# Setup Phase 1 Timer
-	add_child(shoot_timer)
-	shoot_timer.wait_time = 2.0
-	shoot_timer.timeout.connect(_on_shoot_timer)
-	shoot_timer.start()
+	health = max_health
 	
-	# Setup Phase 2 Charging Timer
-	add_child(charge_timer)
-	charge_timer.wait_time = 3.0
-	charge_timer.timeout.connect(_start_charge)
+	if has_node("Hitbox"):
+		var hb = $Hitbox
+		# Dynamically attach a tiny script so the Area2D can receive 'take_damage'
+		var script = GDScript.new()
+		script.source_code = "extends Area2D\nfunc take_damage(amount: float):\n\tget_parent().take_damage(amount)\n"
+		script.reload()
+		hb.set_script(script)
+	
+	await get_tree().process_frame
+	var players = get_tree().get_nodes_in_group("player")
+	if players.size() > 0:
+		player = players[0]
+		# Scale based on floor
+		if player.has_node("StatManager"):
+			var stats = player.get_node("StatManager")
+			var f: int = stats.current_floor
+			
+			max_health = 150.0 + (50 * (f - 1))
+			health = max_health
+			move_speed = 60.0 + (10 * (f - 1))
+			
+			if boss_type == BossType.DUKE_OF_FLIES:
+				max_health *= 0.8 # Less HP but summons mobs
+				health = max_health
+				current_state = State.ORBIT
+				state_timer = 3.0
+			
+			if f >= 3:
+				# Boss becomes redder and faster
+				modulate = Color(1.2, 0.8, 0.8)
+				
+	if sprite:
+		sprite.texture = load("res://assets/monstro_sprite.png")
+		sprite.scale = Vector2(0.18, 0.18)
+
+func _draw() -> void:
+	return # Use Sprite2D instead
+	if boss_type == BossType.MONSTRO:
+		_draw_monstro()
+	else:
+		_draw_duke()
+
+func _draw_monstro() -> void:
+	var c = Color(0.8, 0.1, 0.2) if flash_timer <= 0 else Color.WHITE
+	# Huge boss body
+	draw_circle(Vector2.ZERO, 40, Color(0.2, 0.05, 0.05))
+	draw_circle(Vector2.ZERO, 35, c)
+	
+	# Features
+	draw_circle(Vector2(-15, -10), 8, Color.BLACK)
+	draw_circle(Vector2(15, -10), 8, Color.BLACK)
+	draw_circle(Vector2(-15, -10), 3, Color(1, 0.8, 0.2)) # Glowing eyes
+	draw_circle(Vector2(15, -10), 3, Color(1, 0.8, 0.2))
+	
+	# Maw
+	draw_rect(Rect2(-20, 10, 40, 15), Color(0.1, 0, 0))
+	# Teeth
+	for t in range(-15, 20, 8):
+		var pts = PackedVector2Array([Vector2(t, 10), Vector2(t+4, 18), Vector2(t+8, 10)])
+		draw_colored_polygon(pts, Color.WHITE)
+
+func _draw_duke() -> void:
+	var c = Color(0.4, 0.3, 0.2) if flash_timer <= 0 else Color.WHITE
+	# Rotting fleshy blob
+	draw_circle(Vector2.ZERO, 38, Color(0.1, 0.1, 0.1))
+	draw_circle(Vector2.ZERO, 34, c)
+	# Holes for flies
+	for i in range(5):
+		var ang = (i * TAU / 5.0)
+		draw_circle(Vector2(cos(ang), sin(ang)) * 20, 6, Color(0.1, 0.05, 0))
+	# Sickly eyes
+	draw_circle(Vector2(-12, -8), 5, Color.WHITE)
+	draw_circle(Vector2(12, -8), 5, Color.WHITE)
+	draw_circle(Vector2(-12, -8), 2, Color.BLACK)
+	draw_circle(Vector2(12, -8), 2, Color.BLACK)
 
 func _physics_process(delta: float) -> void:
-	if current_state == State.PHASE_1_SHOOT:
-		# Hover slowly toward player or center of room
-		if player_ref:
-			velocity = (player_ref.global_position - global_position).normalized() * 50.0
-		move_and_slide()
+	if not player or not is_instance_valid(player):
+		return
 		
-	elif current_state == State.PHASE_2_CHARGE:
-		if is_charging:
-			velocity = charge_direction * charge_speed
-			# Rapid deceleration
-			charge_direction = charge_direction.lerp(Vector2.ZERO, delta * 3.0)
-			if charge_direction.length() < 0.1:
-				is_charging = false
-		else:
-			# Slowly track player while waiting for next charge
-			if player_ref:
-				velocity = (player_ref.global_position - global_position).normalized() * 20.0
-		
-		move_and_slide()
-		
-		# Throb visual effect in Phase 2
-		sprite.scale = Vector2(1.0, 1.0) * (1.0 + sin(Time.get_ticks_msec() / 100.0) * 0.1)
-
-func _on_shoot_timer() -> void:
-	if current_state != State.PHASE_1_SHOOT or not bullet_scene: return
+	# Flash effect
+	if flash_timer > 0:
+		flash_timer -= delta
+		if flash_timer <= 0:
+			queue_redraw()
+			
+	# DoT Ticks (Poison/Fire/etc)
+	if is_dot_active:
+		dot_tick_timer -= delta
+		if dot_tick_timer <= 0:
+			dot_tick_timer = 0.5
+			var tick_dmg = dot_dps * 0.5
+			health -= tick_dmg
+			flash_timer = 0.1 # Visual flash
+			queue_redraw()
+			
+			if health <= 0:
+				die()
+				return
+				
+		if dot_timer <= 0:
+			is_dot_active = false
+			modulate = Color.WHITE
+			
+	state_timer -= delta
 	
-	# Fire an 8-way ring of bullets
-	var num_bullets = 8
-	for i in range(num_bullets):
-		var angle = (i * PI * 2) / num_bullets
-		var dir = Vector2(cos(angle), sin(angle))
+	match current_state:
+		State.IDLE:
+			_state_idle(delta)
+		State.SHOOT_RING:
+			_state_shoot_ring(delta)
+		State.DASH:
+			_state_dash(delta)
+		State.ORBIT:
+			_state_orbit(delta)
+		State.SUMMON:
+			_state_summon(delta)
+
+func _state_idle(delta: float) -> void:
+	# Slowly drift toward player
+	var dir = (player.global_position - global_position).normalized()
+	velocity = dir * move_speed
+	move_and_slide()
+	_check_contact_damage()
+	
+	if state_timer <= 0:
+		# Pick random next state
+		var r = randf()
+		if r < 0.5:
+			current_state = State.SHOOT_RING
+			state_timer = 1.0 # Brief pause while shooting
+			_fire_ring()
+		else:
+			current_state = State.DASH
+			state_timer = 1.5
+			# Charge much further past the player to look dangerous!
+			dash_target = player.global_position + (player.global_position - global_position).normalized() * 300.0
+
+func _state_shoot_ring(_delta: float) -> void:
+	velocity = Vector2.ZERO # Stop to shoot
+	if state_timer <= 0:
+		current_state = State.IDLE
+		state_timer = 2.0
+
+func _state_dash(delta: float) -> void:
+	var dir = (dash_target - global_position).normalized()
+	velocity = dir * move_speed * 4.5 # Fast dash
+	move_and_slide()
+	_check_contact_damage()
+	
+	# Check for direct contact damage during dash
+	var dist = global_position.distance_to(player.global_position)
+	if dist < 60: # Boss hitbox is large
+		player.take_damage(contact_damage)
+	
+	# Stop dashing if we reach target or timer runs out
+	if global_position.distance_to(dash_target) < 10.0 or state_timer <= 0:
+		current_state = State.IDLE
+		state_timer = 2.0
+
+func _state_orbit(delta: float) -> void:
+	# Orbit the player at a distance
+	var orbit_speed = 1.0
+	var dist = 200.0
+	var target = player.global_position + Vector2(cos(Time.get_ticks_msec() * 0.001 * orbit_speed), sin(Time.get_ticks_msec() * 0.001 * orbit_speed)) * dist
+	var dir = (target - global_position).normalized()
+	velocity = dir * move_speed * 1.5
+	move_and_slide()
+	_check_contact_damage()
+	
+	if state_timer <= 0:
+		current_state = State.SUMMON
+		state_timer = 1.0
+
+func _state_summon(_delta: float) -> void:
+	velocity *= 0.8 # Slow down to summon
+	if state_timer <= 0:
+		_spawn_flies()
+		current_state = State.ORBIT
+		state_timer = randf_range(2.0, 4.0)
+
+func _spawn_flies() -> void:
+	if not enemy_scene: return
+	SFX.play_boss_roar() # Or a "vomit" sound
+	
+	for i in range(3):
+		var fly = enemy_scene.instantiate()
+		fly.enemy_type = 5 # FLY
+		fly.global_position = global_position + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+		get_parent().call_deferred("add_child", fly)
+
+func apply_dot(dps: float, duration: float, color: Color) -> void:
+	dot_dps = dps
+	dot_timer = duration
+	is_dot_active = true
+	dot_color = color
+	modulate = color
+
+func _fire_ring() -> void:
+	if not bullet_scene: return
+	SFX.play_boss_roar()
+	
+	var floor_num = 1
+	if player and player.has_node("StatManager"):
+		floor_num = player.get_node("StatManager").current_floor
 		
+	var num_bullets = 12 + (floor_num * 4) # More bullets per floor
+	var angle_step = TAU / num_bullets
+	for i in range(num_bullets):
 		var bullet = bullet_scene.instantiate()
 		bullet.global_position = global_position
-		bullet.direction = dir
-		# Make sure these bullets are marked hostile or use an EnemyTear.tscn
-		get_tree().root.add_child(bullet)
+		bullet.direction = Vector2(cos(i * angle_step), sin(i * angle_step))
+		get_tree().current_scene.call_deferred("add_child", bullet)
 
-func _start_charge() -> void:
-	if current_state != State.PHASE_2_CHARGE or not player_ref: return
+func take_damage(amount: float) -> void:
+	health -= amount
+	health_changed.emit(health, max_health)
 	
-	# Lock onto player's current position and lunge
-	charge_direction = (player_ref.global_position - global_position).normalized()
-	is_charging = true
-
-func take_damage(amount: int) -> void:
-	current_health -= amount
-	boss_health_changed.emit(current_health, max_health)
+	flash_timer = 0.1
+	queue_redraw()
 	
-	# Visual hit flash
-	sprite.modulate = Color(1, 0, 0)
-	await get_tree().create_timer(0.1).timeout
-	if current_state == State.PHASE_2_CHARGE:
-		sprite.modulate = Color(1, 0.5, 0) # Stay angry orange
-	else:
-		sprite.modulate = Color(1, 1, 1)
+	if sprite:
+		sprite.modulate = Color(1, 0, 0)
+		await get_tree().create_timer(0.1).timeout
+		if is_instance_valid(sprite):
+			sprite.modulate = Color.WHITE
 	
-	# Phase Transition Check
-	if current_health <= max_health / 2 and current_state == State.PHASE_1_SHOOT:
-		transition_to_phase_2()
-		
-	if current_health <= 0:
+	if health <= 0:
 		die()
 
-func transition_to_phase_2() -> void:
-	current_state = State.PHASE_2_CHARGE
-	sprite.modulate = Color(1, 0.5, 0) # Turn angry orange
-	shoot_timer.stop()
-	charge_timer.start()
-	print("BOSS PHASE 2 ENRAGED!")
-
 func die() -> void:
+	SFX.play_explosion()
 	boss_defeated.emit()
-	queue_free()
-
-func _on_hitbox_area_entered(area: Area2D) -> void:
-	if area.is_in_group("player_tear"):
-		# ECS stat injection would go here
-		take_damage(int(area.damage))
+	
+	if item_scene:
+		var item = item_scene.instantiate()
+		item.position = position + Vector2(0, 40) # Spawn item slightly below
+		get_parent().call_deferred("add_child", item)
 		
-		if not area.is_piercing:
-			area.queue_free()
+	# Spawn trapdoor so player can go to next floor!
+	var trapdoor_scene = load("res://Trapdoor.tscn")
+	if trapdoor_scene:
+		var trapdoor = trapdoor_scene.instantiate()
+		trapdoor.position = position - Vector2(0, 20) # Spawn trapdoor slightly above
+		get_parent().call_deferred("add_child", trapdoor)
+		
+	call_deferred("queue_free")
+
+func _check_contact_damage() -> void:
+	for i in get_slide_collision_count():
+		var col = get_slide_collision(i)
+		var collider = col.get_collider()
+		if collider and collider.is_in_group("player") and collider.has_method("take_damage"):
+			collider.call_deferred("take_damage", contact_damage)

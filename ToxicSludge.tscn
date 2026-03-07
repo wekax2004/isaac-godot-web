@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://ToxicSludge.gd" id="1_tsludge"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1"]
+radius = 35.0
+
+[node name="ToxicSludge" type="CharacterBody2D" groups=["boss", "enemies"]]
+collision_layer = 4
+collision_mask = 7
+script = ExtResource("1_tsludge")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_1")
+
+[node name="Hitbox" type="Area2D" parent="." groups=["enemies"]]
+collision_layer = 4
+collision_mask = 7
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
+shape = SubResource("CircleShape2D_1")

@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Room.gd" id="1_room"]
+
+[node name="Room" type="Node2D"]
+script = ExtResource("1_room")
+top_door = NodePath("TopDoor")
+bottom_door = NodePath("BottomDoor")
+left_door = NodePath("LeftDoor")
+right_door = NodePath("RightDoor")
+
+[node name="TopDoor" type="Node2D" parent="."]
+position = Vector2(0, -360)
+
+[node name="BottomDoor" type="Node2D" parent="."]
+position = Vector2(0, 360)
+
+[node name="LeftDoor" type="Node2D" parent="."]
+position = Vector2(-640, 0)
+
+[node name="RightDoor" type="Node2D" parent="."]
+position = Vector2(640, 0)
