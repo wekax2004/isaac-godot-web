@@ -87,6 +87,7 @@ func generate_floor(keep_player: bool = false, override_name: String = "") -> vo
 	# Keep track of layout logically
 	logical_map.clear()
 	used_item_ids.clear()
+	final_pos = Vector2.ZERO
 	var current_pos = Vector2.ZERO
 	logical_map[current_pos] = true
 	
