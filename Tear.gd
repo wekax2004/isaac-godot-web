@@ -59,7 +59,16 @@ func _draw() -> void:
 	# Bright core
 	draw_circle(Vector2.ZERO, 2 * s, Color(1.0, 1.0, 0.8))
 
+var trail_timer: float = 0.0
+
 func _physics_process(delta: float) -> void:
+	# Toxic Trail synergy
+	if is_piercing and is_poison:
+		trail_timer -= delta
+		if trail_timer <= 0:
+			_spawn_poison_cloud()
+			trail_timer = 0.15
+
 	# Add logic for Spoon Bender homing effect!
 	if is_homing:
 		var enemies = get_tree().get_nodes_in_group("enemies")
@@ -164,10 +173,6 @@ func _split_tears() -> void:
 	can_split = false # Current tear can't split again
 	var angles = [90, -90]
 	for angle in angles:
-		var new_tear = load("res://Tear.tscn").instantiate()
-		new_tear.global_position = global_position
-		new_tear.direction = direction.rotated(deg_to_rad(angle))
-		new_tear.speed = speed
 		new_tear.damage = damage * 0.5 # Half damage for splits
 		new_tear.max_range = max_range * 0.5
 		new_tear.tear_size = tear_size * 0.7
@@ -180,6 +185,11 @@ func _split_tears() -> void:
 		new_tear.is_piercing = is_piercing
 		new_tear.is_poison = is_poison
 		new_tear.is_explosive = is_explosive
+		
+		# SYNERGY: Parasite + Explosive = Splitting explosions!
+		if is_explosive:
+			new_tear.is_explosive = true
+			new_tear.damage = damage * 0.8 # Buff split explosion damage slightly
 		
 		get_parent().call_deferred("add_child", new_tear)
 
@@ -198,3 +208,11 @@ func _explode() -> void:
 		splash.scale = Vector2(3, 3)
 		splash.color = Color(1.0, 0.4, 0.0)
 		get_tree().current_scene.add_child(splash)
+
+func _spawn_poison_cloud() -> void:
+	if splash_scene:
+		var cloud = splash_scene.instantiate()
+		cloud.global_position = global_position
+		cloud.scale = Vector2(0.8, 0.8)
+		cloud.color = Color(0.2, 0.9, 0.1, 0.6)
+		get_tree().current_scene.call_deferred("add_child", cloud)

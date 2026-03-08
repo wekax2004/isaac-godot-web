@@ -37,6 +37,11 @@ func next_floor() -> void:
 	is_generating = true
 	
 	if current_player and current_player.stats:
+		# Persist Memory Units to Meta-Progression
+		var stats = current_player.get_node("StatManager")
+		if stats:
+			SaveSystem.add_memory_units(stats.bandwidth)
+			
 		current_player.stats.current_floor += 1
 		
 		# Increase min/max rooms based on floor

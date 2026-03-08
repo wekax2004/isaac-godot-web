@@ -132,10 +132,13 @@ func recalculate_stats() -> void:
 			current_tear_color = item.tear_color_override
 
 	# 3. Apply multipliers at the end
-	damage *= total_mult_damage
-	speed *= total_mult_speed
-	fire_rate *= total_mult_fire_rate
+	damage *= total_mult_damage * GameManager.perm_damage_mult * GlitchManager.get_glitch_mult("DATA_CORRUPTION")
+	speed *= total_mult_speed * GameManager.perm_speed_mult
+	fire_rate *= total_mult_fire_rate * GlitchManager.get_glitch_mult("OVERCLOCK")
 	range *= total_mult_range
+	
+	# Permanent Health Bonus
+	max_health += GameManager.perm_health_bonus
 	
 	# Hard clamps to prevent crazy math breakage
 	if fire_rate < 0.05: fire_rate = 0.05

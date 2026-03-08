@@ -93,7 +93,23 @@ func register_boss(boss: Node2D) -> void:
 	if not boss.boss_defeated.is_connected(_on_boss_defeated):
 		boss.boss_defeated.connect(_on_boss_defeated)
 		
+	GlitchManager.glitch_triggered.connect(_on_glitch_triggered)
 	$"HUD_UI".queue_redraw()
+
+func _on_glitch_triggered(type: String, duration: float) -> void:
+	var desc = "CRITICAL FAILURE"
+	match type:
+		"OVERCLOCK": desc = "FIRE RATE OVERRIDE ACTIVE"
+		"LAG_SPIKE": desc = "LATENCY SPIKE DETECTED"
+		"DATA_CORRUPTION": desc = "DAMAGE OUTPUT CORRUPTED (2x)"
+		
+	popup_messages.append({
+		"text": "!!! " + type + " !!!",
+		"desc": desc,
+		"lifetime": 4.0,
+		"y_offset": -100.0,
+		"color": Color.RED
+	})
 
 func _on_boss_health_changed(hp: float, max_hp: float) -> void:
 	boss_health = hp
@@ -193,7 +209,7 @@ func _on_hud_ui_draw() -> void:
 		
 		# Version Number (Bottom Right)
 		var screen_height = get_viewport().get_visible_rect().size.y
-		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.2.5", 0, -1, 12, Color(1, 1, 1, 0.5))
+		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.3.0", 0, -1, 12, Color(1, 1, 1, 0.5))
 		
 		# Collect explored positions for adjacency check
 		var explored_set = {}

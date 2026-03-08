@@ -84,3 +84,6 @@ dash={
 
 SFX="*res://SFX.gd"
 GameManager="*res://GameManager.gd"
+CharacterRegistry="*res://CharacterRegistry.gd"
+SaveSystem="*res://SaveSystem.gd"
+GlitchManager="*res://GlitchManager.gd"

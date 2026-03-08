@@ -9,7 +9,7 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	
 	if has_node("VersionLabel"):
-		$VersionLabel.text = "VER: MASTERWORK_V3.1 (ROOT ACCESS UPDATE)"
+		$VersionLabel.text = "VER: 1.3.0 (META-GLITCH OVERRIDE)"
 	
 	_setup_character_select()
 
@@ -44,6 +44,12 @@ func _setup_character_select() -> void:
 	next_btn.pressed.connect(_on_next_char)
 	btn_hbox.add_child(next_btn)
 	
+	var upgrade_btn = Button.new()
+	upgrade_btn.text = "[ PERSISTENT UPGRADES ]"
+	upgrade_btn.custom_minimum_size = Vector2(250, 40)
+	upgrade_btn.pressed.connect(_show_upgrade_menu)
+	container.add_child(upgrade_btn)
+	
 	_update_char_preview()
 
 func _on_prev_char() -> void:
@@ -57,7 +63,6 @@ func _on_next_char() -> void:
 	var ids = ["0x01", "0x02", "0x03"]
 	var idx = ids.find(char_id)
 	idx = (idx + 1) % ids.size()
-	char_id = idx #ids[idx] - Wait, fixed typo below
 	char_id = ids[idx]
 	_update_char_preview()
 
@@ -66,10 +71,66 @@ func _update_char_preview() -> void:
 	GameManager.selected_character = c
 	char_label.text = "[ SELECT INSTANCE: " + c.character_name + " ]"
 	desc_label.text = c.description + "\n\nPASSIVE: " + c.passive_description
-	
-	# Preview color on version label or similar? 
-	# Let's just update the label color
 	char_label.modulate = c.sprite_color
+
+func _show_upgrade_menu() -> void:
+	var menu = Panel.new()
+	menu.name = "UpgradeMenu"
+	menu.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	menu.custom_minimum_size = Vector2(400, 500)
+	add_child(menu)
+	
+	var v_box = VBoxContainer.new()
+	v_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Add some margin
+	v_box.offset_left = 20
+	v_box.offset_right = -20
+	v_box.offset_top = 20
+	v_box.offset_bottom = -20
+	menu.add_child(v_box)
+	
+	var title = Label.new()
+	title.text = "=== SYSTEM OPTIMIZATION ==="
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v_box.add_child(title)
+	
+	var mem_label = Label.new()
+	mem_label.name = "MemCount"
+	mem_label.text = "AVAILABLE MEMORY: " + str(SaveSystem.save_data.total_memory_units) + " UNITS"
+	mem_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mem_label.modulate = Color(0.2, 0.8, 1.0)
+	v_box.add_child(mem_label)
+	
+	var upgrades = [
+		{"id": "health_boost", "name": "KERNEL PATCH", "desc": "+1 Start HP", "cost": 50},
+		{"id": "damage_boost", "name": "OVERCLOCK", "desc": "+10% Base DMG", "cost": 75},
+		{"id": "speed_boost", "name": "FIBER LINK", "desc": "+5% Base SPD", "cost": 40}
+	]
+	
+	for up in upgrades:
+		var btn = Button.new()
+		var level = SaveSystem.get_upgrade_level(up.id)
+		btn.text = up.name + " (Lv. " + str(level) + ")\n" + up.desc + "\nCOST: " + str(up.cost)
+		btn.custom_minimum_size = Vector2(300, 80)
+		btn.pressed.connect(func(): _buy_upgrade(up.id, up.cost, menu))
+		v_box.add_child(btn)
+		
+	var close_btn = Button.new()
+	close_btn.text = "BACK TO TERMINAL"
+	close_btn.pressed.connect(func(): menu.queue_free())
+	v_box.add_child(close_btn)
+
+func _buy_upgrade(id: String, cost: int, menu: Panel) -> void:
+	if SaveSystem.buy_upgrade(id, cost):
+		GameManager.update_perm_bonuses()
+		menu.queue_free()
+		_show_upgrade_menu() # Refresh
+	else:
+		# Flash red if can't afford
+		var label = menu.find_child("MemCount")
+		if label:
+			label.modulate = Color.RED
+			get_tree().create_timer(0.5).timeout.connect(func(): label.modulate = Color(0.2, 0.8, 1.0))
 
 func _on_play_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://LevelGenerator.tscn")

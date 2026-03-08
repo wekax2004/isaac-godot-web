@@ -419,18 +419,26 @@ func fire_knife(direction: Vector2) -> void:
 	can_shoot = true
 
 func _spawn_knife(dir: Vector2) -> void:
-	var knife = knife_scene.instantiate()
-	knife.player = self
-	knife.global_position = global_position
-	knife.direction = dir
+	var num_knives = 3 if stats.has_shotgun else 1
+	var spread = deg_to_rad(20)
 	
-	knife.damage = stats.damage
-	knife.max_range = stats.range * 0.85 # Buffed range!
-	knife.size_mult = stats.tear_size_mult
-	knife.is_poison = stats.has_poison
-	knife.is_explosive = stats.has_explosive
-	
-	get_tree().current_scene.call_deferred("add_child", knife)
+	for i in range(num_knives):
+		var knife = knife_scene.instantiate()
+		knife.player = self
+		knife.global_position = global_position
+		
+		var bonus_angle = 0.0
+		if num_knives > 1:
+			bonus_angle = (i - 1) * spread
+			
+		knife.direction = dir.rotated(bonus_angle).normalized()
+		knife.damage = stats.damage
+		knife.max_range = stats.range * 0.85 
+		knife.size_mult = stats.tear_size_mult
+		knife.is_poison = stats.has_poison
+		knife.is_explosive = stats.has_explosive
+		
+		get_tree().current_scene.call_deferred("add_child", knife)
 
 func _handle_brimstone_charging(dir: Vector2, delta: float) -> void:
 	is_charging = true
