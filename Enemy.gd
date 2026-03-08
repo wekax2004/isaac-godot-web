@@ -46,6 +46,8 @@ var snare_cooldown: float = 0.0
 var phase_timer: float = 0.0
 var is_phasing: bool = false
 var teleport_cooldown: float = 0.0
+var is_teleporting: bool = false
+var teleport_warning_timer: float = 0.0
 
 var parent_room: Node2D = null
 @onready var sprite = $Sprite2D # Ensure Sprite2D exists
@@ -471,24 +473,46 @@ func _ai_glitch_wraith(delta: float) -> void:
 	phase_timer -= delta
 	if phase_timer <= 0:
 		is_phasing = !is_phasing
-		phase_timer = 2.0 if is_phasing else 1.5
+		# Balanced timing: 2.0s vulnerable, 1.2s phasing
+		phase_timer = 1.2 if is_phasing else 2.0
 		if is_phasing:
 			modulate.a = 0.2
 			collision_layer = 0 # Phase through things? 
-			# Actually just collision_mask to avoid being hit
 		else:
 			modulate.a = 1.0
 			collision_layer = 4 # Reset to enemy layer
 			
+	if is_teleporting:
+		teleport_warning_timer -= delta
+		# Visual flicker telegraph
+		if int(Time.get_ticks_msec() / 50) % 2 == 0:
+			modulate = Color(1, 1, 1, 1.0)
+		else:
+			modulate = Color(1, 0, 0, 0.5)
+			
+		if teleport_warning_timer <= 0:
+			is_teleporting = false
+			modulate = Color.WHITE
+			# Actual teleport now
+			# Ensure a minimum distance from player (80-150 range)
+			var angle = randf() * TAU
+			var dist = randf_range(90, 160)
+			var offset = Vector2(cos(angle), sin(angle)) * dist
+			global_position = player.global_position + offset
+			
+			# Visual effect for teleport
+			if parent_room:
+				parent_room.queue_redraw()
+		return # Stay still while telegraphing
+
 	teleport_cooldown -= delta
 	if not is_phasing and teleport_cooldown <= 0:
-		# Teleport behind or near player
-		var offset = Vector2(randf_range(-150, 150), randf_range(-150, 150))
-		global_position = player.global_position + offset
-		teleport_cooldown = 4.0
-		# Visual effect for teleport
-		if parent_room:
-			parent_room.queue_redraw()
+		# Start teleport warning cycle
+		is_teleporting = true
+		teleport_warning_timer = 0.5 # 0.5s warning
+		teleport_cooldown = 4.5 # Total cycle includes warning + cooldown
+		velocity = Vector2.ZERO
+		return
 	
 	if not is_phasing:
 		var dir = (player.global_position - global_position).normalized()
