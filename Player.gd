@@ -425,7 +425,7 @@ func _spawn_knife(dir: Vector2) -> void:
 	knife.direction = dir
 	
 	knife.damage = stats.damage
-	knife.max_range = stats.range * 0.5 # Knife has shorter effective range than tears
+	knife.max_range = stats.range * 0.85 # Buffed range!
 	knife.size_mult = stats.tear_size_mult
 	knife.is_poison = stats.has_poison
 	knife.is_explosive = stats.has_explosive

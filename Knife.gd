@@ -2,7 +2,7 @@ extends Area2D
 
 var damage: float = 10.0
 var max_range: float = 150.0
-var speed: float = 400.0
+var speed: float = 500.0
 var return_speed: float = 600.0
 
 var direction: Vector2 = Vector2.ZERO

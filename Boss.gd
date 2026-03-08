@@ -1,10 +1,11 @@
 extends CharacterBody2D
+class_name Boss
 
 signal health_changed(current: float, max: float)
 signal boss_defeated
 
 enum BossType { MONSTRO, DUKE_OF_FLIES, HEAVY_MECH, NECROMANCER, NANITE_SWARM }
-enum State { IDLE, SHOOT_RING, DASH, SUMMON, ORBIT, VOLLEY, TELEPORT, SUMMON_ELITES }
+enum State { IDLE, SHOOT_RING, DASH, SUMMON, ORBIT, VOLLEY, TELEPORT, SUMMON_ELITES, JUMP_AOE, FLY_BURST, LOCK_ON, MORTAR_STRIKE, CLONE_ATTACK, CLOUD_FORM }
 
 @export var boss_type: BossType = BossType.MONSTRO
 
@@ -178,6 +179,18 @@ func _physics_process(delta: float) -> void:
 			_state_teleport(delta)
 		State.SUMMON_ELITES:
 			_state_summon_elites(delta)
+		State.JUMP_AOE:
+			_state_jump_aoe(delta)
+		State.FLY_BURST:
+			_state_fly_burst(delta)
+		State.LOCK_ON:
+			_state_lock_on(delta)
+		State.MORTAR_STRIKE:
+			_state_mortar_strike(delta)
+		State.CLONE_ATTACK:
+			_state_clone_attack(delta)
+		State.CLOUD_FORM:
+			_state_cloud_form(delta)
 
 func _state_idle(delta: float) -> void:
 	# Slowly drift toward player
@@ -201,15 +214,46 @@ func _state_idle(delta: float) -> void:
 		else:
 			# Boss-specific decision logic
 			match boss_type:
+				BossType.MONSTRO:
+					if r < 0.6:
+						current_state = State.JUMP_AOE
+						state_timer = 2.0
+						dash_target = player.global_position
+					else:
+						current_state = State.SHOOT_RING
+						state_timer = 1.0
+						_fire_ring()
+				BossType.DUKE_OF_FLIES:
+					if r < 0.6:
+						current_state = State.FLY_BURST
+						state_timer = 1.5
+					else:
+						current_state = State.ORBIT
+						state_timer = 3.0
 				BossType.HEAVY_MECH:
-					current_state = State.VOLLEY
-					state_timer = 2.0
+					if r < 0.4:
+						current_state = State.LOCK_ON
+						state_timer = 3.0
+					elif r < 0.7:
+						current_state = State.MORTAR_STRIKE
+						state_timer = 2.0
+					else:
+						current_state = State.VOLLEY
+						state_timer = 2.0
 				BossType.NECROMANCER:
-					current_state = State.TELEPORT if randf() < 0.5 else State.SUMMON_ELITES
-					state_timer = 1.0
+					if r < 0.5:
+						current_state = State.CLONE_ATTACK
+						state_timer = 1.5
+					else:
+						current_state = State.SUMMON_ELITES
+						state_timer = 2.0
 				BossType.NANITE_SWARM:
-					current_state = State.SUMMON
-					state_timer = 0.5
+					if r < 0.6:
+						current_state = State.CLOUD_FORM
+						state_timer = 2.0
+					else:
+						current_state = State.SUMMON
+						state_timer = 0.5
 				_:
 					current_state = State.IDLE
 					state_timer = 1.0
@@ -376,6 +420,99 @@ func die() -> void:
 			get_parent().call_deferred("add_child", trapdoor)
 			
 	call_deferred("queue_free")
+
+func _state_jump_aoe(delta: float) -> void:
+	var dir = (dash_target - global_position).normalized()
+	velocity = dir * move_speed * 5.0
+	move_and_slide()
+	_check_contact_damage()
+	
+	if global_position.distance_to(dash_target) < 20.0 or state_timer <= 0:
+		_fire_ring()
+		_spawn_puddle() # Leave a slowing footprint
+		current_state = State.IDLE
+		state_timer = 2.0
+
+func _state_fly_burst(_delta: float) -> void:
+	velocity *= 0.5
+	if Engine.get_frames_drawn() % 10 == 0:
+		_spawn_flies()
+	
+	if state_timer <= 0:
+		current_state = State.IDLE
+		state_timer = 2.0
+
+func _state_lock_on(delta: float) -> void:
+	velocity = Vector2.ZERO
+	# Rapid fire directly at player
+	if Engine.get_frames_drawn() % 5 == 0:
+		var dir = (player.global_position - global_position).normalized()
+		var bullet = bullet_scene.instantiate()
+		bullet.global_position = global_position
+		bullet.direction = dir
+		get_tree().current_scene.call_deferred("add_child", bullet)
+	
+	if state_timer <= 0:
+		current_state = State.IDLE
+		state_timer = 2.0
+
+func _state_mortar_strike(_delta: float) -> void:
+	velocity *= 0.7
+	if Engine.get_frames_drawn() % 20 == 0:
+		var target_pos = player.global_position + Vector2(randf_range(-100, 100), randf_range(-100, 100))
+		_spawn_mortar(target_pos)
+		
+	if state_timer <= 0:
+		current_state = State.IDLE
+		state_timer = 1.0
+
+func _spawn_mortar(target: Vector2) -> void:
+	# Visual indicator/delayed explosion
+	var puddle = load("res://AcidPuddle.tscn").instantiate()
+	puddle.global_position = target
+	puddle.scale = Vector2(2, 2)
+	puddle.puddle_color = Color(1, 0.4, 0) # Fire/Heat
+	get_parent().call_deferred("add_child", puddle)
+
+func _state_clone_attack(_delta: float) -> void:
+	velocity = Vector2.ZERO
+	if state_timer > 0.5:
+		# Flash before clone
+		modulate.a = 0.5 if Engine.get_frames_drawn() % 4 == 0 else 1.0
+	else:
+		# Teleport and leave a clone
+		var old_pos = global_position
+		global_position = player.global_position + Vector2(randf_range(-200, 200), randf_range(-200, 200))
+		_spawn_clone(old_pos)
+		modulate.a = 1.0
+		current_state = State.IDLE
+		state_timer = 2.0
+
+func _spawn_clone(pos: Vector2) -> void:
+	var clone = enemy_scene.instantiate()
+	clone.enemy_type = Enemy.EnemyType.GLITCH_WRAITH
+	clone.global_position = pos
+	get_parent().call_deferred("add_child", clone)
+
+func _state_cloud_form(delta: float) -> void:
+	# Fast, slightly transparent movement
+	var dir = (player.global_position - global_position).normalized()
+	velocity = dir * move_speed * 3.0
+	move_and_slide()
+	modulate.a = 0.4
+	
+	if state_timer <= 0:
+		modulate.a = 1.0
+		current_state = State.IDLE
+		state_timer = 1.0
+
+func _spawn_puddle() -> void:
+	var puddle_scene = load("res://AcidPuddle.tscn")
+	if puddle_scene:
+		var p = puddle_scene.instantiate()
+		p.global_position = global_position
+		p.scale = Vector2(1.5, 1.5)
+		get_parent().call_deferred("add_child", p)
 
 func _check_contact_damage() -> void:
 	for i in get_slide_collision_count():
