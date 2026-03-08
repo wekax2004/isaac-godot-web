@@ -5,6 +5,7 @@ signal boss_defeated
 
 @export var is_split: bool = false
 var is_dead: bool = false
+var boss_name: String = "TOXIC SLUDGE"
 
 var max_health: float = 120.0
 var health: float = 120.0

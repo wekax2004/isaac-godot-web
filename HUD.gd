@@ -193,7 +193,7 @@ func _on_hud_ui_draw() -> void:
 		
 		# Version Number (Bottom Right)
 		var screen_height = get_viewport().get_visible_rect().size.y
-		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.0.18", 0, -1, 12, Color(1, 1, 1, 0.5))
+		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.2.5", 0, -1, 12, Color(1, 1, 1, 0.5))
 		
 		# Collect explored positions for adjacency check
 		var explored_set = {}
@@ -341,6 +341,7 @@ func _on_hud_ui_draw() -> void:
 		ui.draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color(0.8, 0.1, 0.1))
 		
 		# Boss Name
-		# Center the text approximately
-		ui.draw_string(ThemeDB.fallback_font, Vector2((screen_width / 2.0) - 40.0, bar_y - 10.0), "THE BOSS", 0, -1, 16, Color.RED)
+		var b_name = current_boss.boss_name if "boss_name" in current_boss else "THE BOSS"
+		var text_size = ThemeDB.fallback_font.get_string_size(b_name, 0, -1, 16).x
+		ui.draw_string(ThemeDB.fallback_font, Vector2((screen_width / 2.0) - (text_size / 2.0), bar_y - 10.0), b_name, 0, -1, 16, Color.RED)
 

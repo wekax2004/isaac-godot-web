@@ -8,6 +8,7 @@ enum BossType { MONSTRO, DUKE_OF_FLIES, HEAVY_MECH, NECROMANCER, NANITE_SWARM }
 enum State { IDLE, SHOOT_RING, DASH, SUMMON, ORBIT, VOLLEY, TELEPORT, SUMMON_ELITES, JUMP_AOE, FLY_BURST, LOCK_ON, MORTAR_STRIKE, CLONE_ATTACK, CLOUD_FORM }
 
 @export var boss_type: BossType = BossType.MONSTRO
+var boss_name: String = "THE BOSS"
 
 var max_health: float = 150.0
 var health: float = 150.0
@@ -90,6 +91,14 @@ func _ready() -> void:
 				sprite.texture = load("res://assets/sprites/pulse_drone.png")
 				sprite.scale = Vector2(0.15, 0.15)
 				move_speed *= 1.5
+				
+	# Initialize Boss Name
+	match boss_type:
+		BossType.MONSTRO: boss_name = "MONSTRO-BOT"
+		BossType.DUKE_OF_FLIES: boss_name = "NANITE DUKE"
+		BossType.HEAVY_MECH: boss_name = "CORTEX MECH"
+		BossType.NECROMANCER: boss_name = "ARCH-CRYPTOR"
+		BossType.NANITE_SWARM: boss_name = "SWARM-OS"
 
 func _draw() -> void:
 	return # Use Sprite2D instead
