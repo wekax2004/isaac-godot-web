@@ -9,13 +9,16 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	
 	if has_node("VersionLabel"):
-		$VersionLabel.text = "VER: 1.3.0 (META-GLITCH OVERRIDE)"
+		$VersionLabel.text = "VER: 1.3.2 (SYSTEM STABILIZED)"
 	
 	_setup_character_select()
+
+var char_select_node: Control
 
 func _setup_character_select() -> void:
 	# Create a simple UI container for character selection
 	var container = VBoxContainer.new()
+	char_select_node = container
 	container.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	container.position += Vector2(0, 100) # Move below main title
 	add_child(container)
@@ -52,28 +55,10 @@ func _setup_character_select() -> void:
 	
 	_update_char_preview()
 
-func _on_prev_char() -> void:
-	var ids = ["0x01", "0x02", "0x03"]
-	var idx = ids.find(char_id)
-	idx = (idx - 1 + ids.size()) % ids.size()
-	char_id = ids[idx]
-	_update_char_preview()
-
-func _on_next_char() -> void:
-	var ids = ["0x01", "0x02", "0x03"]
-	var idx = ids.find(char_id)
-	idx = (idx + 1) % ids.size()
-	char_id = ids[idx]
-	_update_char_preview()
-
-func _update_char_preview() -> void:
-	var c = CharacterRegistry.get_character(char_id)
-	GameManager.selected_character = c
-	char_label.text = "[ SELECT INSTANCE: " + c.character_name + " ]"
-	desc_label.text = c.description + "\n\nPASSIVE: " + c.passive_description
-	char_label.modulate = c.sprite_color
-
 func _show_upgrade_menu() -> void:
+	if char_select_node:
+		char_select_node.hide()
+		
 	var menu = Panel.new()
 	menu.name = "UpgradeMenu"
 	menu.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -82,7 +67,6 @@ func _show_upgrade_menu() -> void:
 	
 	var v_box = VBoxContainer.new()
 	v_box.name = "VBoxContainer" # Add name for find_child
-	v_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	v_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	v_box.offset_left = 20
 	v_box.offset_right = -20
@@ -118,7 +102,11 @@ func _show_upgrade_menu() -> void:
 		
 	var close_btn = Button.new()
 	close_btn.text = "BACK TO TERMINAL"
-	close_btn.pressed.connect(func(): menu.queue_free())
+	close_btn.pressed.connect(func(): 
+		menu.queue_free()
+		if char_select_node:
+			char_select_node.show()
+	)
 	v_box.add_child(close_btn)
 
 func _buy_upgrade(id: String, cost: int, menu: Panel) -> void:
@@ -132,6 +120,27 @@ func _buy_upgrade(id: String, cost: int, menu: Panel) -> void:
 		if label:
 			label.modulate = Color.RED
 			get_tree().create_timer(0.5).timeout.connect(label.set_modulate.bind(Color(0.2, 0.8, 1.0)))
+
+func _on_prev_char() -> void:
+	var ids = ["0x01", "0x02", "0x03"]
+	var idx = ids.find(char_id)
+	idx = (idx - 1 + ids.size()) % ids.size()
+	char_id = ids[idx]
+	_update_char_preview()
+
+func _on_next_char() -> void:
+	var ids = ["0x01", "0x02", "0x03"]
+	var idx = ids.find(char_id)
+	idx = (idx + 1) % ids.size()
+	char_id = ids[idx]
+	_update_char_preview()
+
+func _update_char_preview() -> void:
+	var c = CharacterRegistry.get_character(char_id)
+	GameManager.selected_character = c
+	char_label.text = "[ SELECT INSTANCE: " + c.character_name + " ]"
+	desc_label.text = c.description + "\n\nPASSIVE: " + c.passive_description
+	char_label.modulate = c.sprite_color
 
 func _on_play_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://LevelGenerator.tscn")
