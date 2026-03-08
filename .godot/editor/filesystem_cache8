@@ -9,7 +9,7 @@ BloodStain.gd::GDScript::-1::1772706349::0::1::::<>Node2D<>::
 Boss.gd::GDScript::-1::1772979071::0::1::::Boss<>CharacterBody2D<>::
 Boss.tscn::PackedScene::-1::1772798510::0::1::::<><>::res://Boss.gd
 CharacterData.gd::GDScript::-1::1772910466::0::1::::CharacterData<>Resource<>::
-CharacterRegistry.gd::GDScript::-1::1772910490::0::1::::CharacterRegistry<>Node<>::
+CharacterRegistry.gd::GDScript::-1::1772988476::0::1::::<>Node<>::
 diff.txt::TextFile::-1::1772657360::0::1::::<><>::
 Enemy.gd::GDScript::-1::1772977893::0::1::::Enemy<>CharacterBody2D<>::
 Enemy.tscn::PackedScene::-1::1772912290::0::1::::<><>::res://Enemy.gd
@@ -39,7 +39,7 @@ Laser.gd::GDScript::-1::1772972621::0::1::::<>RayCast2D<>::
 Laser.tscn::PackedScene::5611881435315008441::1772705112::0::1::::<><>::res://Laser.gd
 LevelGenerator.gd::GDScript::-1::1772979484::0::1::::<>Node2D<>::
 LevelGenerator.tscn::PackedScene::-1::1772625150::0::1::::<><>::res://LevelGenerator.gd
-MainMenu.gd::GDScript::-1::1772979518::0::1::::<>CanvasLayer<>::
+MainMenu.gd::GDScript::-1::1772988478::0::1::::<>CanvasLayer<>::
 MainMenu.tscn::PackedScene::-1::1772724704::0::1::::<><>::res://MainMenu.gd
 Obstacle.gd::GDScript::-1::1772912868::0::1::::<>StaticBody2D<>::
 Obstacle.tscn::PackedScene::-1::1772743636::0::1::::<><>::res://Obstacle.gd
@@ -60,7 +60,7 @@ Spikes.gd::GDScript::-1::1772657644::0::1::::<>Area2D<>::
 Spikes.tscn::PackedScene::-1::1772657646::0::1::::<><>::res://Spikes.gd
 StatManager.gd::GDScript::-1::1772979423::0::1::::StatManager<>Node<>::
 status.txt::TextFile::-1::1772657333::0::1::::<><>::
-Tear.gd::GDScript::-1::1772979460::0::1::::<>Area2D<>::
+Tear.gd::GDScript::-1::1772988443::0::1::::<>Area2D<>::
 Tear.tscn::PackedScene::-1::1772743528::0::1::::<><>::res://Tear.gd<>res://icon.svg
 test.gd::GDScript::-1::1772979560::0::1::::<>SceneTree<>::
 TNT.gd::GDScript::-1::1772737794::0::1::::<>Area2D<>::
@@ -119,10 +119,10 @@ spider_bot.png::CompressedTexture2D::5789489665093332138::1772911702::1772912455
 turret_droid.png::CompressedTexture2D::9148990546200167277::1772828463::1772828538::1::::<><>::
 wall.png::CompressedTexture2D::4277148381635034172::1772656923::1772656939::1::::<><>::
 ::res://build/::1772555080
-::res://build/web/::1772979095
-index.apple-touch-icon.png::CompressedTexture2D::215427902462137038::1772979095::1772555918::1::::<><>::
-index.icon.png::CompressedTexture2D::1058766339633443994::1772979095::1772555918::1::::<><>::
-index.png::CompressedTexture2D::5565672680595579101::1772979095::1772555918::1::::<><>::
+::res://build/web/::1772979593
+index.apple-touch-icon.png::CompressedTexture2D::215427902462137038::1772979593::1772555918::1::::<><>::
+index.icon.png::CompressedTexture2D::1058766339633443994::1772979593::1772555918::1::::<><>::
+index.png::CompressedTexture2D::5565672680595579101::1772979593::1772555918::1::::<><>::
 ::res://node_modules/::1772733712
 .package-lock.json::JSON::-1::1772733715::0::1::::<><>::
 ::res://node_modules/@babel/::1772733712

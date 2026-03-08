@@ -173,10 +173,14 @@ func _split_tears() -> void:
 	can_split = false # Current tear can't split again
 	var angles = [90, -90]
 	for angle in angles:
+		var new_tear = load("res://Tear.tscn").instantiate()
+		new_tear.global_position = global_position
+		new_tear.direction = direction.rotated(deg_to_rad(angle))
+		new_tear.speed = speed
 		new_tear.damage = damage * 0.5 # Half damage for splits
 		new_tear.max_range = max_range * 0.5
 		new_tear.tear_size = tear_size * 0.7
-		new_tear.is_parasite = false # Splits don't usually split again in Isaac unless very specific
+		new_tear.is_parasite = false # Splits don't usually split again
 		new_tear.can_split = false
 		new_tear.color_override = color_override
 		
@@ -189,7 +193,7 @@ func _split_tears() -> void:
 		# SYNERGY: Parasite + Explosive = Splitting explosions!
 		if is_explosive:
 			new_tear.is_explosive = true
-			new_tear.damage = damage * 0.8 # Buff split explosion damage slightly
+			new_tear.damage = damage * 0.8
 		
 		get_parent().call_deferred("add_child", new_tear)
 

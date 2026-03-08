@@ -81,8 +81,9 @@ func _show_upgrade_menu() -> void:
 	add_child(menu)
 	
 	var v_box = VBoxContainer.new()
+	v_box.name = "VBoxContainer" # Add name for find_child
+	v_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	v_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# Add some margin
 	v_box.offset_left = 20
 	v_box.offset_right = -20
 	v_box.offset_top = 20
@@ -130,7 +131,7 @@ func _buy_upgrade(id: String, cost: int, menu: Panel) -> void:
 		var label = menu.find_child("MemCount")
 		if label:
 			label.modulate = Color.RED
-			get_tree().create_timer(0.5).timeout.connect(func(): label.modulate = Color(0.2, 0.8, 1.0))
+			get_tree().create_timer(0.5).timeout.connect(label.set_modulate.bind(Color(0.2, 0.8, 1.0)))
 
 func _on_play_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://LevelGenerator.tscn")

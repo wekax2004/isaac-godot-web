@@ -1,5 +1,4 @@
 extends Node
-class_name CharacterRegistry
 
 static func get_character(id: String) -> CharacterData:
 	var data = CharacterData.new()
