@@ -2,9 +2,7 @@ extends CanvasLayer
 
 var current_health: float = 3.0
 var max_health: float = 3.0
-var coins: int = 0
-var keys: int = 0
-var bombs: int = 0
+var bandwidth: int = 0
 var player_stats: Node = null
 
 var level_generator: Node = null
@@ -39,10 +37,8 @@ func _on_player_health_changed(hp: float, max_hp: float) -> void:
 	max_health = max_hp
 	$"HUD_UI".queue_redraw()
 
-func _on_consumables_changed(c: int, k: int, b: int) -> void:
-	coins = c
-	keys = k
-	bombs = b
+func _on_bandwidth_changed(amount: int) -> void:
+	bandwidth = amount
 	$"HUD_UI".queue_redraw()
 
 func set_player_stats(stats: Node) -> void:
@@ -128,24 +124,17 @@ func _on_hud_ui_draw() -> void:
 		if i < int(current_health):
 			ui.draw_rect(Rect2(pos.x - heart_size + 2, pos.y - heart_size + 2, heart_size * 1.5, heart_size * 1.5), Color(1.0, 0.4, 0.5))
 
-	# --- Draw Consumables (Left Side below health) ---
+	# --- Draw Bandwidth (Left Side below health) ---
 	var cons_y = start_y + 35
-	var line_height = 25
 	
-	# Coin icon
-	ui.draw_circle(Vector2(start_x, cons_y), 6, Color(1.0, 0.8, 0.0))
-	ui.draw_string(ThemeDB.fallback_font, Vector2(start_x + 15, cons_y + 5), str(coins).pad_zeros(2), 0, -1, 16, Color.WHITE)
-	
-	# Bomb icon
-	ui.draw_circle(Vector2(start_x, cons_y + line_height), 6, Color(0.1, 0.1, 0.1))
-	ui.draw_string(ThemeDB.fallback_font, Vector2(start_x + 15, cons_y + line_height + 5), str(bombs).pad_zeros(2), 0, -1, 16, Color.WHITE)
-	
-	# Key icon
-	ui.draw_circle(Vector2(start_x, cons_y + line_height * 2), 4, Color(0.6, 0.6, 0.6))
-	ui.draw_string(ThemeDB.fallback_font, Vector2(start_x + 15, cons_y + line_height * 2 + 5), str(keys).pad_zeros(2), 0, -1, 16, Color.WHITE)
+	# Bandwidth Icon (Cyan glowing data fragment)
+	var bw_color = Color(0.2, 0.8, 1.0)
+	var pts = PackedVector2Array([Vector2(start_x, cons_y - 6), Vector2(start_x + 6, cons_y), Vector2(start_x, cons_y + 6), Vector2(start_x - 6, cons_y)])
+	ui.draw_colored_polygon(pts, bw_color)
+	ui.draw_string(ThemeDB.fallback_font, Vector2(start_x + 15, cons_y + 5), "MEM: " + str(bandwidth).pad_zeros(3), 0, -1, 16, Color.WHITE)
 
-	# --- Draw Active Item (Top Left, below consumables) ---
-	var active_y = cons_y + line_height * 3
+	# --- Draw Active Item (Top Left, below Bandwidth) ---
+	var active_y = cons_y + 30
 	ui.draw_rect(Rect2(start_x - 10, active_y - 12, 50, 50), Color(0.1, 0.1, 0.1, 0.8))
 	ui.draw_rect(Rect2(start_x - 10, active_y - 12, 50, 50), Color(0.3, 0.3, 0.3), false, 2)
 	
@@ -198,9 +187,12 @@ func _on_hud_ui_draw() -> void:
 		var floor_num = 1
 		if player_stats and player_stats.get("current_floor"):
 			floor_num = player_stats.current_floor
-		var floor_names = ["Basement", "Caves", "Depths"]
+		var floor_names = ["Localhost", "Staging", "Production", "The Root Directory"]
 		var floor_name = floor_names[mini(floor_num - 1, floor_names.size() - 1)]
-		ui.draw_string(ThemeDB.fallback_font, Vector2(mm_center.x - 90, mm_center.y - 55), "F" + str(floor_num) + ": " + floor_name, 0, -1, 14, Color(0.8, 0.8, 0.6))
+		ui.draw_string(ThemeDB.fallback_font, Vector2(mm_center.x - 90, mm_center.y - 55), "ENV: " + floor_name, 0, -1, 14, Color(0.2, 0.8, 1.0))
+		
+		# Version Number
+		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, 40), "v1.0.9", 0, -1, 12, Color(0.5, 0.5, 0.5, 0.7))
 		
 		# Collect explored positions for adjacency check
 		var explored_set = {}
