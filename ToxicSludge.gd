@@ -28,12 +28,14 @@ func _ready() -> void:
 	add_to_group("enemies")
 	add_to_group("boss")
 	
+	# FIX 1: Safely attach the Hitbox script ONLY if it doesn't already exist from a duplicate
 	if has_node("Hitbox"):
 		var hb = $Hitbox
-		var script = GDScript.new()
-		script.source_code = "extends Area2D\nfunc take_damage(amount: float):\n\tget_parent().take_damage(amount)\n"
-		script.reload()
-		hb.set_script(script)
+		if not hb.has_method("take_damage"):
+			var script = GDScript.new()
+			script.source_code = "extends Area2D\nfunc take_damage(amount: float):\n\tget_parent().take_damage(amount)\n"
+			script.reload()
+			hb.set_script(script)
 		
 	await get_tree().process_frame
 	var players = get_tree().get_nodes_in_group("player")
@@ -48,12 +50,13 @@ func _ready() -> void:
 			if not is_split:
 				max_health = 120.0 + (50 * (f - 1))
 				move_speed = 50.0 + (10 * (f - 1))
+				# FIX 2: Only reset health to max if this is the original parent boss!
+				health = max_health 
 			else:
 				# Split versions are faster but have lower health ceiling
 				max_health = 60.0 + (25 * (f - 1))
 				move_speed = 90.0 + (15 * (f - 1))
-				
-			health = max_health
+				# Notice we removed "health = max_health" from here! It keeps its inherited half-health.
 	
 	if is_split:
 		scale = Vector2(0.6, 0.6)
@@ -201,10 +204,19 @@ func _spawn_loot() -> void:
 		item.position = position + Vector2(0, 40)
 		get_parent().call_deferred("add_child", item)
 		
-	if trapdoor_scene:
-		var trapdoor = trapdoor_scene.instantiate()
-		trapdoor.position = position - Vector2(0, 20)
-		get_parent().call_deferred("add_child", trapdoor)
+	# --- NEW: CHECK FOR FINAL FLOOR ---
+	var is_final_floor = false
+	if player and player.get("stats") and player.stats.current_floor >= 9:
+		is_final_floor = true
+		
+	if is_final_floor:
+		print("MAINFRAME DESTROYED. VICTORY!")
+		get_tree().create_timer(3.0).timeout.connect(func(): get_tree().change_scene_to_file("res://VictoryScreen.tscn"))
+	else:
+		if trapdoor_scene:
+			var trapdoor = trapdoor_scene.instantiate()
+			trapdoor.position = position - Vector2(0, 20)
+			get_parent().call_deferred("add_child", trapdoor)
 
 func _check_contact_damage() -> void:
 	for i in get_slide_collision_count():

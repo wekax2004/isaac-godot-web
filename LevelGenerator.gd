@@ -25,6 +25,7 @@ var shake_intensity: float = 0.0
 var shake_duration: float = 0.0
 
 func _ready() -> void:
+	add_to_group("level_generator")
 	if not room_scene:
 		print("CRITICAL: No Room scene attached to LevelGenerator!")
 		return
@@ -61,11 +62,28 @@ func next_floor() -> void:
 	# Wait one frame for queue_free to finish to prevent overlap bugs
 	await get_tree().process_frame
 	
-	print("----- ASCENDING TO FLOOR ", current_player.stats.current_floor if current_player else 2, " -----")
-	generate_floor(true)
+	var floor_num = current_player.stats.current_floor if current_player else 1
+	var floor_names = [
+		"The Localhost", 
+		"The Dead Sector (Recycle Bin)", 
+		"The Deep Web", 
+		"The Overclocked Core", 
+		"The Quantum Buffer",
+		"The Dark Fiber",
+		"The Root Partition",
+		"The Neural Net",
+		"The Mainframe Core"
+	]
+	var floor_name = floor_names[mini(floor_num - 1, floor_names.size() - 1)]
+	
+	print("----- MIGRATING TO ENVIRONMENT: ", floor_name, " (Node ", floor_num, ") -----")
+	generate_floor(true, floor_name)
 	is_generating = false
 
-func generate_floor(keep_player: bool = false) -> void:
+func generate_floor(keep_player: bool = false, override_name: String = "") -> void:
+	if override_name != "":
+		# Ensure we can use it if needed, or just let the room_instance logic handle it
+		pass
 	# Keep track of layout logically
 	logical_map.clear()
 	used_item_ids.clear()
@@ -106,6 +124,18 @@ func generate_floor(keep_player: bool = false) -> void:
 		# Pass floor info down to the room for rendering
 		if current_player and current_player.stats:
 			room_instance.floor_level = current_player.stats.current_floor
+			var floor_names = [
+				"The Localhost", 
+				"The Dead Sector", 
+				"The Deep Web", 
+				"The Overclocked Core", 
+				"The Quantum Buffer",
+				"The Dark Fiber",
+				"The Root Partition",
+				"The Neural Net",
+				"The Mainframe Core"
+			]
+			room_instance.floor_name = floor_names[mini(room_instance.floor_level - 1, floor_names.size() - 1)]
 			
 		call_deferred("add_child", room_instance)
 		
@@ -207,9 +237,9 @@ func generate_floor(keep_player: bool = false) -> void:
 	# Initial HUD hookups
 	if current_player.has_signal("health_changed"):
 		current_player.health_changed.connect(hud_instance._on_player_health_changed)
-	if current_player.has_signal("consumables_changed"):
-		current_player.consumables_changed.connect(hud_instance._on_consumables_changed)
-		hud_instance._on_consumables_changed(current_player.coins, current_player.keys, current_player.bombs)
+	if current_player.has_signal("bandwidth_changed"):
+		current_player.bandwidth_changed.connect(hud_instance._on_bandwidth_changed)
+		hud_instance._on_bandwidth_changed(current_player.bandwidth)
 	if hud_instance.has_method("set_player_stats") and current_player.get("stats"):
 		hud_instance.set_player_stats(current_player.stats)
 	if hud_instance.has_method("update_minimap"):

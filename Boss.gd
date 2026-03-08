@@ -3,8 +3,8 @@ extends CharacterBody2D
 signal health_changed(current: float, max: float)
 signal boss_defeated
 
-enum BossType { MONSTRO, DUKE_OF_FLIES }
-enum State { IDLE, SHOOT_RING, DASH, SUMMON, ORBIT }
+enum BossType { MONSTRO, DUKE_OF_FLIES, HEAVY_MECH, NECROMANCER, NANITE_SWARM }
+enum State { IDLE, SHOOT_RING, DASH, SUMMON, ORBIT, VOLLEY, TELEPORT, SUMMON_ELITES }
 
 @export var boss_type: BossType = BossType.MONSTRO
 
@@ -70,8 +70,25 @@ func _ready() -> void:
 				modulate = Color(1.2, 0.8, 0.8)
 				
 	if sprite:
-		sprite.texture = load("res://assets/monstro_sprite.png")
-		sprite.scale = Vector2(0.18, 0.18)
+		match boss_type:
+			BossType.MONSTRO:
+				sprite.texture = load("res://assets/monstro_sprite.png")
+				sprite.scale = Vector2(0.18, 0.18)
+			BossType.DUKE_OF_FLIES:
+				sprite.texture = load("res://assets/sprites/nanite_fly.png") # Changed to a cooler nanite fly sprite
+				sprite.scale = Vector2(0.25, 0.25)
+			BossType.HEAVY_MECH:
+				sprite.texture = load("res://assets/sprites/heavy_mech.png")
+				sprite.scale = Vector2(0.2, 0.2)
+				max_health = 250.0
+				health = max_health
+			BossType.NECROMANCER:
+				sprite.texture = load("res://assets/sprites/necromancer.png")
+				sprite.scale = Vector2(0.18, 0.18)
+			BossType.NANITE_SWARM:
+				sprite.texture = load("res://assets/sprites/pulse_drone.png")
+				sprite.scale = Vector2(0.15, 0.15)
+				move_speed *= 1.5
 
 func _draw() -> void:
 	return # Use Sprite2D instead
@@ -155,6 +172,12 @@ func _physics_process(delta: float) -> void:
 			_state_orbit(delta)
 		State.SUMMON:
 			_state_summon(delta)
+		State.VOLLEY:
+			_state_volley(delta)
+		State.TELEPORT:
+			_state_teleport(delta)
+		State.SUMMON_ELITES:
+			_state_summon_elites(delta)
 
 func _state_idle(delta: float) -> void:
 	# Slowly drift toward player
@@ -170,11 +193,26 @@ func _state_idle(delta: float) -> void:
 			current_state = State.SHOOT_RING
 			state_timer = 1.0 # Brief pause while shooting
 			_fire_ring()
-		else:
+		elif r < 0.8:
 			current_state = State.DASH
 			state_timer = 1.5
 			# Charge much further past the player to look dangerous!
 			dash_target = player.global_position + (player.global_position - global_position).normalized() * 300.0
+		else:
+			# Boss-specific decision logic
+			match boss_type:
+				BossType.HEAVY_MECH:
+					current_state = State.VOLLEY
+					state_timer = 2.0
+				BossType.NECROMANCER:
+					current_state = State.TELEPORT if randf() < 0.5 else State.SUMMON_ELITES
+					state_timer = 1.0
+				BossType.NANITE_SWARM:
+					current_state = State.SUMMON
+					state_timer = 0.5
+				_:
+					current_state = State.IDLE
+					state_timer = 1.0
 
 func _state_shoot_ring(_delta: float) -> void:
 	velocity = Vector2.ZERO # Stop to shoot
@@ -216,8 +254,52 @@ func _state_summon(_delta: float) -> void:
 	velocity *= 0.8 # Slow down to summon
 	if state_timer <= 0:
 		_spawn_flies()
+		_fire_ring() # <--- NEW: The Duke now fires a massive ring of bullets when he summons!
 		current_state = State.ORBIT
 		state_timer = randf_range(2.0, 4.0)
+
+func _state_volley(delta: float) -> void:
+	velocity = Vector2.ZERO # Stop to fire volley
+	if state_timer > 0 and Engine.get_frames_drawn() % 15 == 0:
+		_shoot_volley()
+	
+	if state_timer <= 0:
+		current_state = State.IDLE
+		state_timer = 1.5
+
+func _shoot_volley() -> void:
+	if not bullet_scene: return
+	var dir = (player.global_position - global_position).normalized()
+	for i in range(-1, 2): # 3-way spread
+		var bullet = bullet_scene.instantiate()
+		bullet.global_position = global_position
+		bullet.direction = dir.rotated(i * 0.25)
+		get_tree().current_scene.call_deferred("add_child", bullet)
+
+func _state_teleport(_delta: float) -> void:
+	# Visual "fade out" before teleport
+	modulate.a = lerpf(modulate.a, 0.0, 0.2)
+	if state_timer <= 0:
+		# Find random spot in room (assumed size)
+		global_position += Vector2(randf_range(-400, 400), randf_range(-200, 200))
+		modulate.a = 1.0
+		current_state = State.IDLE
+		state_timer = 2.0
+
+func _state_summon_elites(_delta: float) -> void:
+	velocity = Vector2.ZERO
+	if state_timer <= 0:
+		_spawn_elites()
+		current_state = State.IDLE
+		state_timer = 3.0
+
+func _spawn_elites() -> void:
+	if not enemy_scene: return
+	for i in range(2):
+		var elite = enemy_scene.instantiate()
+		elite.enemy_type = EnemyType.GLITCH_WRAITH if boss_type == BossType.NECROMANCER else EnemyType.SHOOTER
+		elite.global_position = global_position + Vector2(randf_range(-50, 50), randf_range(-50, 50))
+		get_parent().call_deferred("add_child", elite)
 
 func _spawn_flies() -> void:
 	if not enemy_scene: return
@@ -277,13 +359,22 @@ func die() -> void:
 		item.position = position + Vector2(0, 40) # Spawn item slightly below
 		get_parent().call_deferred("add_child", item)
 		
-	# Spawn trapdoor so player can go to next floor!
-	var trapdoor_scene = load("res://Trapdoor.tscn")
-	if trapdoor_scene:
-		var trapdoor = trapdoor_scene.instantiate()
-		trapdoor.position = position - Vector2(0, 20) # Spawn trapdoor slightly above
-		get_parent().call_deferred("add_child", trapdoor)
+	# --- NEW: CHECK FOR FINAL FLOOR ---
+	var is_final_floor = false
+	if player and player.get("stats") and player.stats.current_floor >= 9:
+		is_final_floor = true
 		
+	if is_final_floor:
+		print("MAINFRAME DESTROYED. VICTORY!")
+		get_tree().create_timer(3.0).timeout.connect(func(): get_tree().change_scene_to_file("res://VictoryScreen.tscn"))
+	else:
+		# Spawn normal trapdoor
+		var trapdoor_scene = load("res://Trapdoor.tscn")
+		if trapdoor_scene:
+			var trapdoor = trapdoor_scene.instantiate()
+			trapdoor.position = position - Vector2(0, 20)
+			get_parent().call_deferred("add_child", trapdoor)
+			
 	call_deferred("queue_free")
 
 func _check_contact_damage() -> void:
