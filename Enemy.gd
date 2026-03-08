@@ -511,8 +511,14 @@ func _shoot_at_player() -> void:
 		get_tree().current_scene.call_deferred("add_child", bullet)
 	
 func _shoot_snare() -> void:
-	snare_cooldown = 2.0
-	# Placeholder: Stops the crash until we build the snare bullet!
+	if bullet_scene:
+		var bullet = bullet_scene.instantiate()
+		bullet.global_position = global_position
+		bullet.direction = (player.global_position - global_position).normalized()
+		bullet.speed = 300.0 # Snare is faster but rarer
+		if bullet.has_method("set_is_snare"):
+			bullet.set_is_snare(true)
+		get_tree().current_scene.call_deferred("add_child", bullet)
 	
 func _ai_proxy_drone(delta: float) -> void:
 	# Orbit the player or stay near other enemies
