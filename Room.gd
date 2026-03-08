@@ -159,6 +159,7 @@ func _build_collisions() -> void:
 	var half_w = 640.0
 	var half_h = 360.0
 	var wall_thickness = 16.0
+	var door_blocker_thickness = 8.0 # THINNER: Prevents trapping player in the collision
 	var door_size = 180.0 # INCREASED: Make the physical gap much wider for larger sprites!
 	
 	var wall_w = half_w - door_size / 2.0
@@ -178,10 +179,10 @@ func _build_collisions() -> void:
 	_add_coll(Vector2(half_w - wall_thickness/2.0, half_h - wall_h/2.0), Vector2(wall_thickness, wall_h))
 	
 	# Door blockers (closed by default)
-	_add_door_blocker(Vector2(0, -half_h + wall_thickness/2.0), Vector2(door_size, wall_thickness))
-	_add_door_blocker(Vector2(0, half_h - wall_thickness/2.0), Vector2(door_size, wall_thickness))
-	_add_door_blocker(Vector2(-half_w + wall_thickness/2.0, 0), Vector2(wall_thickness, door_size))
-	_add_door_blocker(Vector2(half_w - wall_thickness/2.0, 0), Vector2(wall_thickness, door_size))
+	_add_door_blocker(Vector2(0, -half_h + door_blocker_thickness/2.0), Vector2(door_size, door_blocker_thickness))
+	_add_door_blocker(Vector2(0, half_h - door_blocker_thickness/2.0), Vector2(door_size, door_blocker_thickness))
+	_add_door_blocker(Vector2(-half_w + door_blocker_thickness/2.0, 0), Vector2(door_blocker_thickness, door_size))
+	_add_door_blocker(Vector2(half_w - door_blocker_thickness/2.0, 0), Vector2(door_blocker_thickness, door_size))
 
 func _add_coll(pos: Vector2, size: Vector2) -> void:
 	var shape = RectangleShape2D.new()
@@ -325,7 +326,10 @@ func _check_spawn_trigger() -> void:
 	if enemies_spawned or is_cleared: return
 	var cam = get_viewport().get_camera_2d()
 	if cam and cam.global_position.distance_to(global_position) < 50.0:
-		spawn_enemies()
+		# Grace period: Wait 0.4s to ensure player is fully inside before locking doors
+		await get_tree().create_timer(0.4).timeout
+		if is_instance_valid(self):
+			spawn_enemies()
 	else:
 		# Retry in a few frames
 		await get_tree().process_frame
