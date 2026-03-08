@@ -54,6 +54,12 @@ func set_player_stats(stats: Node) -> void:
 		})
 	
 	player_stats = stats
+	if player_stats and not player_stats.stats_changed.is_connected(_on_stats_changed):
+		player_stats.stats_changed.connect(_on_stats_changed)
+		
+	$"HUD_UI".queue_redraw()
+
+func _on_stats_changed() -> void:
 	$"HUD_UI".queue_redraw()
 
 func _get_item_desc(item: ItemData) -> String:
@@ -209,7 +215,7 @@ func _on_hud_ui_draw() -> void:
 		
 		# Version Number (Bottom Right)
 		var screen_height = get_viewport().get_visible_rect().size.y
-		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.3.3", 0, -1, 12, Color(1, 1, 1, 0.5))
+		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.3.4", 0, -1, 12, Color(1, 1, 1, 0.5))
 		
 		# Collect explored positions for adjacency check
 		var explored_set = {}
