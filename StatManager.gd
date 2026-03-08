@@ -146,3 +146,5 @@ func recalculate_stats() -> void:
 	
 	print("Recalculated Stats -> DMG: ", damage, " | SPD: ", speed, " | FIRE RATE: ", fire_rate, " | RANGE: ", range)
 	stats_changed.emit()
+	if AchievementManager:
+		AchievementManager.check_stats(self)

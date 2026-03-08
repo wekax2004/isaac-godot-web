@@ -43,6 +43,8 @@ func next_floor() -> void:
 			SaveSystem.add_memory_units(stats.bandwidth)
 			
 		current_player.stats.current_floor += 1
+		if AchievementManager:
+			AchievementManager.check_floor_reached(current_player.stats.current_floor)
 		
 		# Increase min/max rooms based on floor
 		rooms_to_spawn = 10 + (current_player.stats.current_floor * 5) 

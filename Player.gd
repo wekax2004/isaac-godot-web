@@ -546,4 +546,6 @@ func add_consumable(type: String, amount: int) -> void:
 	SFX.play_pickup()
 	bandwidth += amount
 	bandwidth_changed.emit(bandwidth)
+	if AchievementManager:
+		AchievementManager.check_bandwidth(bandwidth)
 

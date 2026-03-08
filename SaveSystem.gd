@@ -8,7 +8,8 @@ var save_data = {
 		"health_boost": 0,
 		"damage_boost": 0,
 		"speed_boost": 0
-	}
+	},
+	"achievements": {}
 }
 
 func _ready() -> void:
@@ -56,3 +57,13 @@ func buy_upgrade(upgrade_id: String, cost: int) -> bool:
 		save_game()
 		return true
 	return false
+
+func unlock_achievement(id: String) -> void:
+	if not save_data.has("achievements"):
+		save_data["achievements"] = {}
+	save_data["achievements"][id] = true
+	save_game()
+
+func has_achievement(id: String) -> bool:
+	if not save_data.has("achievements"): return false
+	return save_data["achievements"].get(id, false)

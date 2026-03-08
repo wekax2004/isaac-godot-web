@@ -14,15 +14,19 @@ var boss_max_health: float = 1.0
 
 # Item Popup System
 var popup_messages: Array[Dictionary] = []
+var achievement_popups: Array = []
 
 func _ready() -> void:
 	add_to_group("hud")
+	if AchievementManager:
+		AchievementManager.achievement_unlocked.connect(_on_achievement_unlocked)
 	# Will redraw UI whenever needed
 	$"HUD_UI".queue_redraw()
 
 func _process(delta: float) -> void:
 	# Always redraw for hover tooltips and popups
-	if popup_messages.size() > 0 or (player_stats and player_stats.inventory.size() > 0):
+	var needs_redraw = false
+	if popup_messages.size() > 0 or (player_stats and player_stats.inventory.size() > 0) or achievement_popups.size() > 0:
 		if popup_messages.size() > 0:
 			for i in range(popup_messages.size() - 1, -1, -1):
 				var popup = popup_messages[i]
@@ -30,7 +34,24 @@ func _process(delta: float) -> void:
 				popup.y_offset -= delta * 30.0
 				if popup.lifetime <= 0:
 					popup_messages.remove_at(i)
-		$"HUD_UI".queue_redraw()
+			needs_redraw = true
+			
+		if achievement_popups.size() > 0:
+			for i in range(achievement_popups.size() - 1, -1, -1):
+				achievement_popups[i].lifetime -= delta
+				if achievement_popups[i].lifetime <= 0:
+					achievement_popups.remove_at(i)
+			needs_redraw = true
+			
+		if needs_redraw or (player_stats and player_stats.inventory.size() > 0):
+			$"HUD_UI".queue_redraw()
+
+func _on_achievement_unlocked(id: String, title: String) -> void:
+	achievement_popups.append({
+		"title": title,
+		"lifetime": 4.0
+	})
+	$"HUD_UI".queue_redraw()
 
 func _on_player_health_changed(hp: float, max_hp: float) -> void:
 	current_health = hp
@@ -215,7 +236,7 @@ func _on_hud_ui_draw() -> void:
 		
 		# Version Number (Bottom Right)
 		var screen_height = get_viewport().get_visible_rect().size.y
-		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.3.5", 0, -1, 12, Color(1, 1, 1, 0.5))
+		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.4.0", 0, -1, 12, Color(1, 1, 1, 0.5))
 		
 		# Collect explored positions for adjacency check
 		var explored_set = {}
@@ -366,4 +387,28 @@ func _on_hud_ui_draw() -> void:
 		var b_name = current_boss.boss_name if "boss_name" in current_boss else "THE BOSS"
 		var text_size = ThemeDB.fallback_font.get_string_size(b_name, 0, -1, 16).x
 		ui.draw_string(ThemeDB.fallback_font, Vector2((screen_width / 2.0) - (text_size / 2.0), bar_y - 10.0), b_name, 0, -1, 16, Color.RED)
+
+	_draw_achievement_popups(ui)
+
+func _draw_achievement_popups(ui: Control) -> void:
+	if achievement_popups.is_empty(): return
+	
+	var popup = achievement_popups[0] # Show one at a time
+	var screen_width = get_viewport().get_visible_rect().size.x
+	
+	var box_w = 260
+	var box_h = 50
+	var center_x = screen_width / 2
+	var box_y = 20
+	
+	# Slide in animation? Simple fade/alpha for now based on lifetime
+	var alpha = clamp(popup.lifetime * 2.0, 0.0, 1.0)
+	if popup.lifetime < 0.5: alpha = popup.lifetime * 2.0
+	
+	var box_rect = Rect2(center_x - box_w/2, box_y, box_w, box_h)
+	ui.draw_rect(box_rect, Color(0, 0, 0, 0.8 * alpha))
+	ui.draw_rect(box_rect, Color(0.2, 0.8, 1.0, 0.6 * alpha), false, 2.0)
+	
+	ui.draw_string(ThemeDB.fallback_font, Vector2(center_x - box_w/2 + 10, box_y + 20), "ACHIEVEMENT UNLOCKED!", 0, -1, 12, Color(1, 0.9, 0.2, alpha))
+	ui.draw_string(ThemeDB.fallback_font, Vector2(center_x - box_w/2 + 10, box_y + 42), popup.title, 0, -1, 16, Color(1, 1, 1, alpha))
 

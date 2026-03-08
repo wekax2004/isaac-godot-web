@@ -422,6 +422,8 @@ func take_damage(amount: float) -> void:
 
 func die() -> void:
 	SFX.play_explosion()
+	if AchievementManager:
+		AchievementManager.check_boss_killed()
 	boss_defeated.emit()
 	
 	if item_scene:

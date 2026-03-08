@@ -9,7 +9,7 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	
 	if has_node("VersionLabel"):
-		$VersionLabel.text = "VER: 1.3.2 (SYSTEM STABILIZED)"
+		$VersionLabel.text = "VER: 1.4.0 (CONTENT EXPANSION)"
 	
 	_setup_character_select()
 
@@ -52,6 +52,12 @@ func _setup_character_select() -> void:
 	upgrade_btn.custom_minimum_size = Vector2(250, 40)
 	upgrade_btn.pressed.connect(_show_upgrade_menu)
 	container.add_child(upgrade_btn)
+	
+	var achievements_btn = Button.new()
+	achievements_btn.text = "[ CYBER ACHIEVEMENTS ]"
+	achievements_btn.custom_minimum_size = Vector2(250, 40)
+	achievements_btn.pressed.connect(_show_achievements_menu)
+	container.add_child(achievements_btn)
 	
 	_update_char_preview()
 
@@ -102,6 +108,67 @@ func _show_upgrade_menu() -> void:
 		
 	var close_btn = Button.new()
 	close_btn.text = "BACK TO TERMINAL"
+	close_btn.pressed.connect(func(): 
+		menu.queue_free()
+		if char_select_node:
+			char_select_node.show()
+	)
+	v_box.add_child(close_btn)
+
+func _show_achievements_menu() -> void:
+	if char_select_node:
+		char_select_node.hide()
+		
+	var menu = Panel.new()
+	menu.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	menu.custom_minimum_size = Vector2(500, 600)
+	add_child(menu)
+	
+	var v_box = VBoxContainer.new()
+	v_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	v_box.offset_left = 30
+	v_box.offset_right = -30
+	v_box.offset_top = 30
+	v_box.offset_bottom = -30
+	menu.add_child(v_box)
+	
+	var title = Label.new()
+	title.text = "=== ACHIEVEMENT DATABASE ==="
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v_box.add_child(title)
+	v_box.add_child(HSeparator.new())
+	
+	if AchievementManager:
+		for id in AchievementManager.achievements_def.keys():
+			var ach = AchievementManager.achievements_def[id]
+			var unlocked = SaveSystem.has_achievement(id)
+			
+			var h_box = HBoxContainer.new()
+			v_box.add_child(h_box)
+			
+			var status_label = Label.new()
+			status_label.text = "[X] " if unlocked else "[ ] "
+			status_label.modulate = Color(0, 1, 0) if unlocked else Color(0.4, 0.4, 0.4)
+			h_box.add_child(status_label)
+			
+			var info_vbox = VBoxContainer.new()
+			h_box.add_child(info_vbox)
+			
+			var name_label = Label.new()
+			name_label.text = ach.title
+			name_label.modulate = Color(1, 0.9, 0.2) if unlocked else Color(0.6, 0.6, 0.6)
+			info_vbox.add_child(name_label)
+			
+			var desc_lbl = Label.new()
+			desc_lbl.text = ach.desc
+			desc_lbl.add_theme_font_size_override("font_size", 12)
+			desc_lbl.modulate = Color(0.8, 0.8, 0.8) if unlocked else Color(0.3, 0.3, 0.3)
+			info_vbox.add_child(desc_lbl)
+			
+			v_box.add_child(HSeparator.new())
+			
+	var close_btn = Button.new()
+	close_btn.text = "DISCONNECT"
 	close_btn.pressed.connect(func(): 
 		menu.queue_free()
 		if char_select_node:

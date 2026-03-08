@@ -1,7 +1,7 @@
 extends Area2D
 
 # 24 unique items with diverse effects
-const ITEM_COUNT = 30
+const ITEM_COUNT = 36
 @export var item_id: int = -1
 @export var price: int = 0
 @export var price_hp: int = 0
@@ -41,6 +41,12 @@ const ITEM_DB = [
 	["Macro Lens", "Mega Bullets\nDamage UP, Fire rate DOWN"],
 	["Splinter Rounds", "Split!\nBullets split on impact"],
 	["Ricochet Modules", "Bouncing Bullets\nBullets bounce off walls"],
+	["Solid State Drive", "+0.5 Speed\n+1 Max Health"],
+	["GPU Overclock", "1.5x Damage\n+20% Fire Rate delay"],
+	["Debug Console", "ACTIVE (4 rooms)\nReveals the floor map"],
+	["Malware Suite", "Viral Infection\nChance to slow enemies on hit"],
+	["Ethernet Cable", "+200 range\nDirect connection!"],
+	["RGB Fan", "+10% Spd & Dmg\nRainbow Projectiles!"],
 ]
 
 func _ready() -> void:
@@ -200,6 +206,28 @@ func _draw() -> void:
 			draw_rect(Rect2(-5, -4, 10, 2), Color(0.6, 0.6, 0.6))
 			draw_rect(Rect2(-4, 0, 8, 2), Color(0.6, 0.6, 0.6))
 			draw_circle(Vector2(0, -10), 3, Color(1.0, 0.5, 0.1))
+		30: # SSD (Thin rect)
+			draw_rect(Rect2(-8, -4, 16, 8), Color(0.1, 0.1, 0.15))
+			draw_rect(Rect2(-6, -2, 4, 4), Color(0.3, 0.3, 0.4))
+		31: # GPU (Fancy board)
+			draw_rect(Rect2(-10, -6, 20, 12), Color(0.1, 0.4, 0.1))
+			draw_circle(Vector2(0,0), 5, Color(0.2, 0.2, 0.2)) # Fan
+		32: # Debug Console (Terminal icon)
+			draw_rect(Rect2(-8, -6, 16, 12), Color(0.05, 0.05, 0.1))
+			draw_string(ThemeDB.fallback_font, Vector2(-6, 4), ">_", 0, -1, 10, Color(0, 1, 0))
+		33: # Malware (Skull icon)
+			draw_circle(center, 7, Color(0.5, 0, 0.7))
+			draw_circle(Vector2(-3, -2), 2, Color.BLACK)
+			draw_circle(Vector2(3, -2), 2, Color.BLACK)
+		34: # Ethernet Cable (Plug)
+			draw_rect(Rect2(-4, -6, 8, 12), Color(0.2, 0.4, 0.8))
+			draw_rect(Rect2(-2, 6, 4, 4), Color(0.7, 0.7, 0.7))
+		35: # RGB Fan (Colorful circle)
+			draw_circle(center, 9, Color(0.2, 0.2, 0.2))
+			var colors = [Color.RED, Color.GREEN, Color.BLUE]
+			for i in range(3):
+				var angle = i * TAU / 3 + Time.get_ticks_msec() * 0.01
+				draw_line(center, center + Vector2(cos(angle), sin(angle)) * 8, colors[i], 3)
 		
 	# Price tag
 	if price > 0:
@@ -413,6 +441,31 @@ func _apply_item(player: Node2D) -> void:
 			item_data.item_name = "Ricochet Modules"
 			item_data.is_rubber_cement = true
 			item_data.description = "Bouncing bullets"
+		30:
+			item_data.item_name = "Solid State Drive"
+			item_data.flat_speed = 50.0
+			item_data.flat_health = 1
+		31:
+			item_data.item_name = "GPU Overclock"
+			item_data.mult_damage = 1.5
+			item_data.mult_fire_rate = 1.2
+		32:
+			item_data.item_name = "Debug Console"
+			item_data.is_active_item = true
+			item_data.max_charges = 4
+		33:
+			item_data.item_name = "Malware Suite"
+			item_data.is_poison = true # Using poison as a base for 'slow' for now
+			item_data.tear_color_override = Color(0.7, 0.0, 1.0)
+		34:
+			item_data.item_name = "Ethernet Cable"
+			item_data.flat_range = 200.0
+			item_data.tear_color_override = Color(0.2, 0.5, 1.0)
+		35:
+			item_data.item_name = "RGB Fan"
+			item_data.mult_damage = 1.1
+			item_data.mult_speed = 1.1
+			item_data.tear_color_override = Color.from_hsv(randf(), 0.8, 1.0)
 		
 	print("Picked up ", item_data.item_name, "!")
 	stats.add_item(item_data)
