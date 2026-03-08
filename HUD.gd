@@ -236,7 +236,7 @@ func _on_hud_ui_draw() -> void:
 		
 		# Version Number (Bottom Right)
 		var screen_height = get_viewport().get_visible_rect().size.y
-		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.4.0", 0, -1, 12, Color(1, 1, 1, 0.5))
+		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.4.1", 0, -1, 12, Color(1, 1, 1, 0.5))
 		
 		# Collect explored positions for adjacency check
 		var explored_set = {}
@@ -297,6 +297,7 @@ func _on_hud_ui_draw() -> void:
 		var screen_width = get_viewport().get_visible_rect().size.x
 		var item_start_y = 260 # Below minimap
 		var line_spacing = 20
+		var col_width = 160
 		
 		# Draw title
 		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 150, item_start_y), "- Inventory -", 0, -1, 16, Color(1.0, 0.8, 0.0))
@@ -305,20 +306,26 @@ func _on_hud_ui_draw() -> void:
 		var mouse_pos = ui.get_local_mouse_position()
 		var hovered_item: ItemData = null
 		var hover_y: float = 0.0
+		var hover_x: float = 0.0
 		
-		var index = 1
-		for item in player_stats.inventory:
-			var iy = item_start_y + (index * line_spacing)
-			var item_rect = Rect2(screen_width - 165, iy - 14, 165, line_spacing)
+		for i in range(player_stats.inventory.size()):
+			var item = player_stats.inventory[i]
+			var col = i / 15 # 15 items per column
+			var row = i % 15
+			
+			var ix = screen_width - 160 - (col * col_width)
+			var iy = item_start_y + 25 + (row * line_spacing)
+			
+			var item_rect = Rect2(ix - 5, iy - 14, col_width - 5, line_spacing)
 			
 			var is_hovered = item_rect.has_point(mouse_pos)
 			var text_color = Color(1.0, 0.9, 0.3) if is_hovered else Color.WHITE
-			ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 160, iy), "• " + item.item_name, 0, -1, 14, text_color)
+			ui.draw_string(ThemeDB.fallback_font, Vector2(ix, iy), "• " + item.item_name, 0, col_width - 10, 14, text_color)
 			
 			if is_hovered:
 				hovered_item = item
 				hover_y = iy
-			index += 1
+				hover_x = ix
 		
 		# Draw tooltip for hovered item
 		if hovered_item:
@@ -326,8 +333,8 @@ func _on_hud_ui_draw() -> void:
 			var desc_lines = desc.split("\n")
 			var box_w = 200.0
 			var line_h = 14
-			var box_h = 20 + (desc_lines.size() * line_h)
-			var tooltip_x = screen_width - 370
+			var box_h = 24 + (desc_lines.size() * line_h)
+			var tooltip_x = hover_x - box_w - 10
 			var tooltip_y = hover_y - 10
 			
 			# Background

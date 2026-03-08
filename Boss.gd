@@ -428,7 +428,21 @@ func die() -> void:
 	
 	if item_scene:
 		var item = item_scene.instantiate()
-		item.position = position + Vector2(0, 40) # Spawn item slightly below
+		var spawn_pos = Vector2.ZERO # Center of room
+		
+		# Anti-overlap logic: check for existing items near center
+		var space_state = get_world_2d().direct_space_state
+		var query = PhysicsPointQueryParameters2D.new()
+		query.collision_mask = 4 # Item mask (assuming layer 3 = 4)
+		
+		for attempt in range(8):
+			query.position = global_position.direction_to(Vector2.ZERO) * (attempt * 20.0)
+			var results = space_state.intersect_point(query)
+			if results.is_empty():
+				spawn_pos = query.position
+				break
+				
+		item.position = spawn_pos
 		get_parent().call_deferred("add_child", item)
 		
 	# --- NEW: CHECK FOR FINAL FLOOR ---

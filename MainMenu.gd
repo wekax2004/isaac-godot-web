@@ -9,7 +9,7 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	
 	if has_node("VersionLabel"):
-		$VersionLabel.text = "VER: 1.4.0 (CONTENT EXPANSION)"
+		$VersionLabel.text = "VER: 1.4.1 (STABILITY REFINEMENTS)"
 	
 	_setup_character_select()
 
