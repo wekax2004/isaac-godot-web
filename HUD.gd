@@ -192,7 +192,7 @@ func _on_hud_ui_draw() -> void:
 		ui.draw_string(ThemeDB.fallback_font, Vector2(mm_center.x - 90, mm_center.y - 55), "ENV: " + floor_name, 0, -1, 14, Color(0.2, 0.8, 1.0))
 		
 		# Version Number
-		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, 40), "v1.0.9", 0, -1, 12, Color(0.5, 0.5, 0.5, 0.7))
+		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, 40), "v1.0.10", 0, -1, 12, Color(0.5, 0.5, 0.5, 0.7))
 		
 		# Collect explored positions for adjacency check
 		var explored_set = {}

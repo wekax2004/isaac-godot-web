@@ -297,7 +297,7 @@ func _spawn_elites() -> void:
 	if not enemy_scene: return
 	for i in range(2):
 		var elite = enemy_scene.instantiate()
-		elite.enemy_type = EnemyType.GLITCH_WRAITH if boss_type == BossType.NECROMANCER else EnemyType.SHOOTER
+		elite.enemy_type = Enemy.EnemyType.GLITCH_WRAITH if boss_type == BossType.NECROMANCER else Enemy.EnemyType.SHOOTER
 		elite.global_position = global_position + Vector2(randf_range(-50, 50), randf_range(-50, 50))
 		get_parent().call_deferred("add_child", elite)
 
@@ -307,7 +307,7 @@ func _spawn_flies() -> void:
 	
 	for i in range(3):
 		var fly = enemy_scene.instantiate()
-		fly.enemy_type = 5 # FLY
+		fly.enemy_type = Enemy.EnemyType.FLY
 		fly.global_position = global_position + Vector2(randf_range(-20, 20), randf_range(-20, 20))
 		get_parent().call_deferred("add_child", fly)
 

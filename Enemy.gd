@@ -1,4 +1,5 @@
 extends CharacterBody2D
+class_name Enemy
 
 enum EnemyType { CHASER, SHOOTER, TANK, FLANKER, HOPPER, FLY, FATTY, SNARE_BOT, PROXY_DRONE, GLITCH_WRAITH }
 signal enemy_died
