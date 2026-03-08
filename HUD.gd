@@ -193,7 +193,7 @@ func _on_hud_ui_draw() -> void:
 		
 		# Version Number (Bottom Right)
 		var screen_height = get_viewport().get_visible_rect().size.y
-		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.0.13", 0, -1, 12, Color(1, 1, 1, 0.5))
+		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.0.14", 0, -1, 12, Color(1, 1, 1, 0.5))
 		
 		# Collect explored positions for adjacency check
 		var explored_set = {}

@@ -7,6 +7,7 @@ var duration: float = 0.1 # Real technology lasers in Isaac flicker or stay for 
 var width: float = 4.0
 var is_poison: bool = false
 var is_explosive: bool = false
+var is_homing: bool = false
 var splash_scene: PackedScene = preload("res://HitSplash.tscn")
 
 var hit_enemies = []
@@ -22,11 +23,35 @@ func _ready() -> void:
 	await get_tree().create_timer(duration).timeout
 	queue_free()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if is_homing:
+		var enemies = get_tree().get_nodes_in_group("enemies")
+		if enemies.size() > 0:
+			var closest = _find_closest_node(enemies)
+			if closest:
+				var dir_to_target = (closest.global_position - global_position).normalized()
+				# Rotate the laser towards the enemy
+				var target_angle = dir_to_target.angle()
+				# We are a child of player, so we need to handle local/global rotation
+				# Laser is usually added with add_child(laser) in Player.gd, so it's in local space.
+				# However, Player is not rotated, so global_rotation =~ rotation.
+				global_rotation = lerp_angle(global_rotation, target_angle, delta * 10.0)
+
 	# Update laser hits every frame while it exists to ensure it follows player and handles collisions
 	force_raycast_update()
 	_process_laser()
 	queue_redraw()
+
+func _find_closest_node(nodes: Array) -> Node2D:
+	var closest_node = null
+	var min_dist = INF
+	for node in nodes:
+		if not is_instance_valid(node): continue
+		var dist = global_position.distance_squared_to(node.global_position)
+		if dist < min_dist:
+			min_dist = dist
+			closest_node = node
+	return closest_node
 
 func _process_laser() -> void:
 	target_position = Vector2.RIGHT * max_range # Reset to max at start of check

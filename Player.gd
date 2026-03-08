@@ -398,6 +398,7 @@ func _spawn_laser(dir: Vector2) -> void:
 	laser.max_range = stats.range
 	laser.is_poison = stats.has_poison
 	laser.is_explosive = stats.has_explosive
+	laser.is_homing = stats.has_homing
 	
 	add_child(laser)
 
@@ -479,6 +480,7 @@ func _spawn_brimstone_laser(dir: Vector2) -> void:
 	laser.max_range = stats.range * 1.5
 	laser.duration = 0.3 # stays longer
 	laser.width = 12.0 # thicker
+	laser.is_homing = stats.has_homing
 	
 	add_child(laser)
 
