@@ -200,63 +200,69 @@ func _state_idle(delta: float) -> void:
 	_check_contact_damage()
 	
 	if state_timer <= 0:
-		# Pick random next state
-		var r = randf()
-		if r < 0.5:
-			current_state = State.SHOOT_RING
-			state_timer = 1.0 # Brief pause while shooting
-			_fire_ring()
-		elif r < 0.8:
-			current_state = State.DASH
-			state_timer = 1.5
-			# Charge much further past the player to look dangerous!
-			dash_target = player.global_position + (player.global_position - global_position).normalized() * 300.0
-		else:
-			# Boss-specific decision logic
-			match boss_type:
-				BossType.MONSTRO:
-					if r < 0.6:
-						current_state = State.JUMP_AOE
-						state_timer = 2.0
-						dash_target = player.global_position
-					else:
-						current_state = State.SHOOT_RING
-						state_timer = 1.0
-						_fire_ring()
-				BossType.DUKE_OF_FLIES:
-					if r < 0.6:
-						current_state = State.FLY_BURST
-						state_timer = 1.5
-					else:
-						current_state = State.ORBIT
-						state_timer = 3.0
-				BossType.HEAVY_MECH:
-					if r < 0.4:
-						current_state = State.LOCK_ON
-						state_timer = 3.0
-					elif r < 0.7:
-						current_state = State.MORTAR_STRIKE
-						state_timer = 2.0
-					else:
-						current_state = State.VOLLEY
-						state_timer = 2.0
-				BossType.NECROMANCER:
-					if r < 0.5:
-						current_state = State.CLONE_ATTACK
-						state_timer = 1.5
-					else:
-						current_state = State.SUMMON_ELITES
-						state_timer = 2.0
-				BossType.NANITE_SWARM:
-					if r < 0.6:
-						current_state = State.CLOUD_FORM
-						state_timer = 2.0
-					else:
-						current_state = State.SUMMON
-						state_timer = 0.5
-				_:
-					current_state = State.IDLE
-					state_timer = 1.0
+		_pick_next_state()
+
+func _pick_next_state() -> void:
+	var r = randf()
+	match boss_type:
+		BossType.MONSTRO:
+			if r < 0.4:
+				current_state = State.DASH
+				state_timer = 1.5
+				dash_target = player.global_position + (player.global_position - global_position).normalized() * 300.0
+			elif r < 0.8:
+				current_state = State.JUMP_AOE
+				state_timer = 2.0
+				dash_target = player.global_position
+			else:
+				current_state = State.SHOOT_RING
+				state_timer = 1.0
+				_fire_ring()
+				
+		BossType.DUKE_OF_FLIES:
+			if r < 0.4:
+				current_state = State.SUMMON
+				state_timer = 0.5
+			elif r < 0.7:
+				current_state = State.FLY_BURST
+				state_timer = 1.5
+			else:
+				current_state = State.ORBIT
+				state_timer = 3.0
+				
+		BossType.HEAVY_MECH:
+			if r < 0.3:
+				current_state = State.LOCK_ON
+				state_timer = 3.0
+			elif r < 0.6:
+				current_state = State.MORTAR_STRIKE
+				state_timer = 2.0
+			else:
+				current_state = State.VOLLEY
+				state_timer = 2.0
+				
+		BossType.NECROMANCER:
+			if r < 0.4:
+				current_state = State.CLONE_ATTACK
+				state_timer = 1.5
+			elif r < 0.7:
+				current_state = State.TELEPORT
+				state_timer = 1.0
+			else:
+				current_state = State.SUMMON_ELITES
+				state_timer = 2.0
+				
+		BossType.NANITE_SWARM:
+			if r < 0.5:
+				current_state = State.CLOUD_FORM
+				state_timer = 2.0
+			elif r < 0.8:
+				current_state = State.SUMMON
+				state_timer = 0.5
+			else:
+				current_state = State.DASH
+				state_timer = 1.0
+				dash_target = player.global_position + (player.global_position - global_position).normalized() * 400.0
 
 func _state_shoot_ring(_delta: float) -> void:
 	velocity = Vector2.ZERO # Stop to shoot
@@ -372,11 +378,22 @@ func _fire_ring() -> void:
 		
 	var num_bullets = 12 + (floor_num * 4) # More bullets per floor
 	var angle_step = TAU / num_bullets
-	for i in range(num_bullets):
-		var bullet = bullet_scene.instantiate()
-		bullet.global_position = global_position
-		bullet.direction = Vector2(cos(i * angle_step), sin(i * angle_step))
-		get_tree().current_scene.call_deferred("add_child", bullet)
+	
+	if boss_type == BossType.MONSTRO:
+		# Monstro fires a wide "blood fan" at the player
+		var base_dir = (player.global_position - global_position).angle()
+		var spread = PI * 0.7 # 126 degree fan
+		for i in range(num_bullets):
+			var bullet = bullet_scene.instantiate()
+			bullet.global_position = global_position
+			bullet.direction = Vector2.from_angle(base_dir - spread/2 + (i * spread / (num_bullets-1)))
+			get_tree().current_scene.call_deferred("add_child", bullet)
+	else:
+		for i in range(num_bullets):
+			var bullet = bullet_scene.instantiate()
+			bullet.global_position = global_position
+			bullet.direction = Vector2(cos(i * angle_step), sin(i * angle_step))
+			get_tree().current_scene.call_deferred("add_child", bullet)
 
 func take_damage(amount: float) -> void:
 	health -= amount
