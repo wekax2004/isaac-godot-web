@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://Player.gd" id="1_player"]
 [ext_resource type="Script" path="res://StatManager.gd" id="2_statmgr"]
@@ -7,10 +7,14 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 12.0
 
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_glow"]
+blend_mode = 1
+
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_player")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+material = SubResource("CanvasItemMaterial_glow")
 texture = ExtResource("3_icon")
 scale = Vector2(0.4, 0.4)
 

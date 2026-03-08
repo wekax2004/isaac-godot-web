@@ -10,13 +10,11 @@ var knife_scene: PackedScene = preload("res://Knife.tscn")
 
 # --- NEW: Signals for Phase 10 HUD ---
 signal health_changed(current_health: int, max_health: int)
-signal consumables_changed(coins: int, keys: int, bombs: int)
+signal bandwidth_changed(amount: int)
 
 var can_shoot: bool = true
 var current_health: int = 3 # We will sync this with StatManager later
-var coins: int = 0
-var keys: int = 0
-var bombs: int = 1
+var bandwidth: int = 20 # Unified resource
 
 # --- NEW: Dash Mechanics ---
 var is_dashing: bool = false
@@ -29,6 +27,9 @@ var invincibility_timer: float = 0.0
 var brimstone_charge: float = 0.0
 var is_charging: bool = false
 var last_shoot_dir: Vector2 = Vector2.ZERO
+
+# --- NEW: Snaring Mechanics (Rooting) ---
+var snare_timer: float = 0.0
 
 @onready var anim = $AnimationPlayer 
 @onready var sprite = $Sprite2D 
@@ -48,11 +49,26 @@ func _ready() -> void:
 		stats.familiar_added.connect(_on_familiar_added)
 		stats.stats_changed.connect(queue_redraw)
 		
-	if sprite:
-		sprite.texture = load("res://assets/player_sprite_new.png")
-		sprite.scale = Vector2(0.15, 0.15)
+	if sprite and GameManager.selected_character:
+		var c = GameManager.selected_character
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		sprite.texture = load("res://assets/player_rogue_instance.png")
+		sprite.show_behind_parent = true 
+		
+		# Auto-scale the player to exactly 50x50 pixels on screen
+		if sprite.texture:
+			var tex_size = sprite.texture.get_size()
+			var target_size = Vector2(50.0, 50.0)
+			sprite.scale = target_size / tex_size
+		
+		if stats:
+			for item_id in c.starting_items:
+				var item_data = ItemRegistry.get_item_data(item_id)
+				stats.add_item(item_data)
+		
+		bandwidth = c.starting_bandwidth
 	
-	call_deferred("emit_signal", "consumables_changed", coins, keys, bombs)
+	call_deferred("emit_signal", "bandwidth_changed", bandwidth)
 	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -134,40 +150,34 @@ func _draw_item_accessories() -> void:
 	# Draw fun visual add-ons based on collected items!
 	for item in stats.inventory:
 		match item.item_name:
-			"Scope":
-				# Draw a little scope on the right eye
-				draw_circle(Vector2(5, -6), 4.5, Color(0.2, 0.2, 0.2))
-				draw_circle(Vector2(5, -6), 3.0, Color.CYAN)
 			"Acid Rounds":
-				# Draw green acid dripping from the player's bottom/mouth area
-				draw_circle(Vector2(0, 8), 4, Color(0.2, 0.9, 0.1))
-				draw_circle(Vector2(-3, 6), 3, Color(0.2, 0.9, 0.1))
-				draw_circle(Vector2(4, 5), 2.5, Color(0.2, 0.9, 0.1))
+				# Leaking green coolant
+				draw_circle(Vector2(0, 8), 3, Color(0.2, 0.9, 0.1))
+				draw_circle(Vector2(-3, 6), 2, Color(0.2, 0.9, 0.1))
 			"Neural Tracker":
-				# Draw a purple headband with a glowing dot
-				draw_rect(Rect2(-12, -10, 24, 4), Color(0.4, 0.1, 0.6))
-				draw_circle(Vector2(0, -8), 2.5, Color(0.9, 0.4, 1.0))
-			"Heavy Caliber":
-				# Draw a massive robotic replacement for the left eye
-				draw_circle(Vector2(-6, -5), 6.5, Color(0.3, 0.3, 0.35))
-				draw_circle(Vector2(-6, -5), 4.5, Color(1.0, 0.85, 0.2))
-				draw_circle(Vector2(-6, -5), 2.0, Color(1.0, 0.4, 0.1))
-			"Energy Blade":
-				# Draw a glowing blade sticking horizontally out of the sprite's hand/side
-				draw_rect(Rect2(-18, 0, 8, 3), Color(0.6, 0.6, 0.6)) # Hilt
-				draw_rect(Rect2(-32, 1, 14, 1), Color(0.4, 0.8, 1.0)) # Blade core
-				draw_rect(Rect2(-32, 0, 14, 3), Color(0.2, 0.6, 1.0, 0.5)) # Blade glow
-			"Phase Rounds":
-				# Dark purple aura ring
-				draw_arc(Vector2.ZERO, 15, 0, TAU, 16, Color(0.4, 0.1, 0.5, 0.7), 2.0)
+				# Purple headband
+				draw_rect(Rect2(-10, -10, 20, 3), Color(0.4, 0.1, 0.6))
+				draw_circle(Vector2(0, -8), 2.0, Color(0.9, 0.4, 1.0))
+			"Hyper-Accelerator":
+				# Glowing orange thrusters on the sides
+				draw_rect(Rect2(-12, -2, 4, 8), Color(1.0, 0.5, 0.0))
+				draw_rect(Rect2(8, -2, 4, 8), Color(1.0, 0.5, 0.0))
+			"Explosive Munitions":
+				# Red hazard core in the center of the chest
+				draw_circle(Vector2(0, 0), 4.0, Color(0.8, 0.1, 0.1))
+				draw_circle(Vector2(0, 0), 2.0, Color(1.0, 0.8, 0.1))
+			"Power Node":
+				# A glowing blue battery pack on the head
+				draw_rect(Rect2(-5, -14, 10, 5), Color(0.1, 0.1, 0.3))
+				draw_rect(Rect2(-3, -13, 6, 3), Color(0.0, 0.8, 1.0))
 			"Overclock":
-				# Draw yellow energy sparks/antenna on the head
+				# Yellow energy sparks/antenna
 				draw_line(Vector2(0, -9), Vector2(-3, -14), Color(0.9, 0.9, 0.1), 2)
 				draw_line(Vector2(-3, -14), Vector2(3, -17), Color(0.9, 0.9, 0.1), 2)
 			"Omni-Cell":
-				# Draw a floating prism over the player's head
-				draw_circle(Vector2(0, -14), 3, Color.WHITE)
-				var pts = PackedVector2Array([Vector2(-4,-14), Vector2(0,-18), Vector2(4,-14), Vector2(0,-10)])
+				# Floating data prism
+				draw_circle(Vector2(0, -14), 2, Color.WHITE)
+				var pts = PackedVector2Array([Vector2(-3,-14), Vector2(0,-17), Vector2(3,-14), Vector2(0,-11)])
 				draw_colored_polygon(pts, Color(0.2, 0.8, 1.0, 0.6))
 
 func add_active_charge(amount: int) -> void:
@@ -193,6 +203,11 @@ func _physics_process(delta: float) -> void:
 				sprite.modulate.a = 1.0
 			queue_redraw()
 	
+	if snare_timer > 0:
+		snare_timer -= delta
+		if snare_timer <= 0:
+			queue_redraw()
+			
 	handle_movement()
 	handle_shooting(delta)
 	update_animation()
@@ -207,9 +222,34 @@ func handle_movement() -> void:
 	var current_speed = stats.speed
 	if is_dashing:
 		current_speed *= dash_multiplier
+	
+	if snare_timer > 0:
+		current_speed = 0.0 # Rooted!
 		
 	velocity = move_dir * current_speed
 	move_and_slide()
+	
+	if is_dashing and Engine.get_frames_drawn() % 3 == 0:
+		var c = GameManager.selected_character
+		if c and c.character_id == "0x03": # OVERFLOW
+			_leave_coolant_trail()
+		else:
+			_leave_corruption_trail()
+
+func _leave_coolant_trail() -> void:
+	if not stats: return
+	var puddle_scene = load("res://AcidPuddle.tscn")
+	if puddle_scene:
+		var inst = puddle_scene.instantiate()
+		inst.global_position = global_position
+		
+		# CRITICAL: Tell the game the player owns this!
+		inst.is_player_owned = true 
+		inst.puddle_color = Color(1.0, 0.2, 0.0, 0.8) # Neon Orange Firewall!
+		inst.damage = stats.damage * 5.0 # Massive tick damage to enemies
+		inst.lifetime = 1.0 # Disappears quickly behind you
+		
+		get_parent().add_child(inst)
 
 func _start_dash() -> void:
 	is_dashing = true
@@ -230,6 +270,47 @@ func _start_dash() -> void:
 		if not is_instance_valid(self): return
 		invincible = false
 		queue_redraw()
+
+func _leave_corruption_trail() -> void:
+	# Create a temporary 'glitch' effect that damages enemies
+	var glitch = Area2D.new()
+	glitch.collision_layer = 0
+	glitch.collision_mask = 4 # Enemies
+	glitch.global_position = global_position
+	
+	var shape = CollisionShape2D.new()
+	var rect = RectangleShape2D.new()
+	rect.size = Vector2(20, 20)
+	shape.shape = rect
+	glitch.add_child(shape)
+	
+	# Visual for glitch
+	var visual = ColorRect.new()
+	visual.size = Vector2(16, 16)
+	visual.position = Vector2(-8, -8)
+	visual.color = Color(0.2, 0.8, 1.0, 0.6)
+	glitch.add_child(visual)
+	
+	get_parent().add_child(glitch)
+	
+	# Damage logic
+	glitch.body_entered.connect(func(body):
+		if body.has_method("take_damage"):
+			body.take_damage(2.0) # Dash trail damage
+		
+		# Character Specific: SCRAMBLE.EXE Packet Burst
+		var c = GameManager.selected_character
+		if c and c.character_id == "0x01" and body.has_method("scramble"):
+			body.scramble(3.0) # Scramble for 3 seconds
+	)
+	
+	# Cleanup after 1 second
+	var t = get_tree().create_timer(1.0)
+	t.timeout.connect(func(): glitch.queue_free())
+	
+	# Randomize visual a bit for 'glitch' look
+	visual.rotation = randf() * TAU
+	visual.scale = Vector2(randf_range(0.5, 1.5), randf_range(0.5, 1.5))
 
 func handle_shooting(delta: float) -> void:
 	var shoot_dir := Input.get_vector("shoot_left", "shoot_right", "shoot_up", "shoot_down")
@@ -294,9 +375,15 @@ func fire_laser(direction: Vector2) -> void:
 	if not laser_scene: return
 	
 	can_shoot = false
-	SFX.play_shoot() # Or a distinct laser sound if we had one
+	SFX.play_shoot() 
 	
-	_spawn_laser(direction)
+	if stats.has_shotgun:
+		var angles = [-15.0, 0.0, 15.0]
+		for angle_deg in angles:
+			var rotated_dir = direction.rotated(deg_to_rad(angle_deg))
+			_spawn_laser(rotated_dir)
+	else:
+		_spawn_laser(direction)
 	
 	await get_tree().create_timer(stats.fire_rate).timeout
 	can_shoot = true
@@ -318,8 +405,14 @@ func fire_knife(direction: Vector2) -> void:
 	if not knife_scene: return
 	
 	can_shoot = false
-	# We use fire_rate as a delay between throws
-	_spawn_knife(direction)
+	
+	if stats.has_shotgun:
+		var angles = [-15.0, 0.0, 15.0]
+		for angle_deg in angles:
+			var rotated_dir = direction.rotated(deg_to_rad(angle_deg))
+			_spawn_knife(rotated_dir)
+	else:
+		_spawn_knife(direction)
 	
 	await get_tree().create_timer(stats.fire_rate).timeout
 	can_shoot = true
@@ -363,10 +456,24 @@ func fire_brimstone(direction: Vector2) -> void:
 	can_shoot = false
 	SFX.play_shoot()
 	
+	if stats.has_shotgun:
+		var angles = [-15.0, 0.0, 15.0]
+		for angle_deg in angles:
+			var rotated_dir = direction.rotated(deg_to_rad(angle_deg))
+			_spawn_brimstone_laser(rotated_dir)
+	else:
+		_spawn_brimstone_laser(direction)
+	
+	# Delay before next charge can start
+	await get_tree().create_timer(0.2).timeout
+	if is_instance_valid(self):
+		can_shoot = true
+
+func _spawn_brimstone_laser(dir: Vector2) -> void:
 	# Brimstone is a thick red laser
 	var laser = laser_scene.instantiate()
 	laser.position = Vector2.ZERO # Follow player
-	laser.rotation = direction.angle()
+	laser.rotation = dir.angle()
 	laser.damage = stats.damage * 2.0 # Brimstone hits harder
 	laser.color = Color(0.8, 0.1, 0.1)
 	laser.max_range = stats.range * 1.5
@@ -374,16 +481,22 @@ func fire_brimstone(direction: Vector2) -> void:
 	laser.width = 12.0 # thicker
 	
 	add_child(laser)
-	
-	# Delay before next charge can start
-	await get_tree().create_timer(0.2).timeout
-	if is_instance_valid(self):
-		can_shoot = true
 
 # --- NEW: Taking Damage Logic ---
+func snare(duration: float) -> void:
+	if invincible: return # Can't snare if i-framed
+	snare_timer = maxi(snare_timer, duration)
+	queue_redraw()
+
 func take_damage(amount: int) -> void:
 	if invincible:
 		return # I-frames!
+		
+	var c = GameManager.selected_character
+	if c and c.character_id == "0x02": # ENCRYPTOR
+		# Hardened Shell: Reduced damage
+		if randf() < 0.5: # 50% chance to ignore 1 damage
+			amount = maxi(1, amount - 1)
 		
 	current_health -= amount
 	SFX.play_hit()
@@ -419,10 +532,8 @@ func die() -> void:
 		get_tree().reload_current_scene()
 
 func add_consumable(type: String, amount: int) -> void:
+	# In the unified system, all types (memory_fragment, etc) add to bandwidth
 	SFX.play_pickup()
-	match type:
-		"coin": coins += amount
-		"key": keys += amount
-		"bomb": bombs += amount
-	consumables_changed.emit(coins, keys, bombs)
+	bandwidth += amount
+	bandwidth_changed.emit(bandwidth)
 

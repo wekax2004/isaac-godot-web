@@ -9,21 +9,27 @@ var sprite: Sprite2D = null
 var flash_timer: float = 0.0
 
 func _ready() -> void:
+	self.scale = Vector2(1.4, 1.4)
 	add_to_group("rocks") # Reuse obstacle blockers
 	
 	health = max_health
 	queue_redraw()
 
 func _draw() -> void:
-	var c = Color(0.8, 0.4, 0.2) if flash_timer <= 0 else Color.WHITE
-	# Draw a red/orange wooden barrel
-	draw_circle(Vector2.ZERO, 16, Color(0.1, 0.05, 0.05)) # Outline
-	draw_circle(Vector2.ZERO, 14, c) # Outer wood
-	draw_circle(Vector2.ZERO, 8, Color(0.4, 0.1, 0.1)) # Inner red core
+	# Glows bright white/cyan when flashing, otherwise neon blue
+	var core_color = Color(0.1, 0.8, 1.0) if flash_timer <= 0 else Color.WHITE 
 	
-	# Iron bands
-	draw_rect(Rect2(-14, -4, 28, 2), Color(0.4, 0.4, 0.45))
-	draw_rect(Rect2(-14, 4, 28, 2), Color(0.4, 0.4, 0.45))
+	# Dark metal server casing
+	draw_rect(Rect2(-14, -16, 28, 32), Color(0.1, 0.1, 0.15)) 
+	draw_rect(Rect2(-10, -12, 20, 24), Color(0.05, 0.05, 0.05)) # Inner shadow
+	
+	# Glowing plasma cooling rings
+	draw_rect(Rect2(-10, -8, 20, 4), core_color)
+	draw_rect(Rect2(-10, 4, 20, 4), core_color)
+	
+	# Red warning indicator light on top
+	var warn_color = Color(1.0, 0.2, 0.2) if flash_timer > 0 else Color(0.4, 0.0, 0.0)
+	draw_circle(Vector2(0, -14), 2.5, warn_color)
 
 func _physics_process(delta: float) -> void:
 	if flash_timer > 0:
@@ -46,7 +52,7 @@ func explode() -> void:
 		var splash = explosion_scene.instantiate()
 		splash.global_position = global_position
 		splash.scale = Vector2(4, 4) # HUGE
-		splash.color = Color(1.0, 0.4, 0.1) # Fire orange
+		splash.color = Color(0.0, 0.8, 1.0) # Digital burst cyan
 		get_tree().current_scene.add_child(splash)
 		
 	# 2. Deal AoE Damage (Radius 120 pixels)

@@ -44,6 +44,7 @@ const ITEM_DB = [
 ]
 
 func _ready() -> void:
+	self.scale = Vector2(1.5, 1.5)
 	if item_id == -1:
 		item_id = randi() % ITEM_COUNT
 	queue_redraw()
@@ -202,7 +203,7 @@ func _draw() -> void:
 		
 	# Price tag
 	if price > 0:
-		draw_string(ThemeDB.fallback_font, Vector2(-10, 25), str(price) + "c", 0, -1, 14, Color(1.0, 0.8, 0.0))
+		draw_string(ThemeDB.fallback_font, Vector2(-10, 25), str(price) + " MEM", 0, -1, 14, Color(0.2, 0.8, 1.0))
 	elif price_hp > 0:
 		draw_string(ThemeDB.fallback_font, Vector2(-18, 25), str(price_hp) + " Max HP", 0, -1, 11, Color(1.0, 0.2, 0.2))
 
@@ -236,10 +237,12 @@ func _on_body_entered(body: Node2D) -> void:
 	
 	if body.is_in_group("player"):
 		if price > 0:
-			var p_coins = body.get("coins")
-			if p_coins == null or p_coins < price:
+			var p_bw = body.get("bandwidth")
+			if p_bw == null or p_bw < price:
 				return
-			body.add_consumable("coin", -price)
+			body.bandwidth -= price
+			if body.has_signal("bandwidth_changed"):
+				body.bandwidth_changed.emit(body.bandwidth)
 			
 		if price_hp > 0:
 			var stats = body.get("stats")

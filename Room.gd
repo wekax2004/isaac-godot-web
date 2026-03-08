@@ -36,7 +36,32 @@ var is_devil_room: bool = false
 var is_secret_room: bool = false
 var secret_revealed: bool = false
 var player_ref: Node2D = null
-var floor_level: int = 1
+@export var floor_level: int = 1
+@export var floor_name: String = "The Localhost"
+
+# Theme Colors
+var color_background: Color = Color(0.02, 0.02, 0.04)
+var color_grid: Color = Color(0.0, 0.8, 1.0, 0.15)
+var color_wall: Color = Color(0.1, 0.1, 0.15)
+var color_firewall: Color = Color(1.0, 0.4, 0.1)
+
+# Hazards - Deletion Zones
+var deletion_zones: Array[Rect2] = []
+var deletion_active: bool = true
+var deletion_timer: float = 0.0
+
+# Hazards - Tumbleweeds
+var tumbleweeds: Array[Dictionary] = []
+
+# Hazards - Tracking Pings
+var ping_timer: float = 0.0
+var ping_active: bool = false
+var ping_radius: float = 0.0
+
+# Hazards - Exhaust Vents
+var vents: Array[Dictionary] = []
+var vent_cycle_timer: float = 0.0
+var vent_active: bool = false
 
 var spawn_markers: Array = []
 
@@ -51,13 +76,68 @@ func _ready() -> void:
 	queue_redraw()
 	spawn_markers = get_tree().get_nodes_in_group("enemy_spawn_points")
 	# Wire door references by node path
+	_apply_theme()
+	
 	if has_node("TopDoor"): top_door = $TopDoor
 	if has_node("BottomDoor"): bottom_door = $BottomDoor
 	if has_node("LeftDoor"): left_door = $LeftDoor
 	if has_node("RightDoor"): right_door = $RightDoor
 	
+	_update_visual_doors()
 	_build_collisions()
 	_setup_entry_detection()
+	_update_door_locks()
+
+func _setup_exhaust_vents() -> void:
+	# Add 2-4 static vents
+	for i in range(randi() % 3 + 2):
+		var rx = randf_range(-450, 450)
+		var ry = randf_range(-250, 250)
+		var dir = [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT].pick_random()
+		vents.append({"pos": Vector2(rx, ry), "dir": dir})
+
+func _setup_tracking_pings() -> void:
+	ping_timer = 5.0 # Every 5 seconds
+
+func _setup_tumbleweeds() -> void:
+	# Add 1-3 bouncy obstacles
+	for i in range(randi() % 3 + 1):
+		var rx = randf_range(-400, 400)
+		var ry = randf_range(-200, 200)
+		var dir = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
+		tumbleweeds.append({"pos": Vector2(rx, ry), "dir": dir, "speed": 120.0})
+
+func _apply_theme() -> void:
+	match floor_level:
+		1: # Localhost
+			color_background = Color(0.02, 0.02, 0.04)
+			color_grid = Color(0.0, 0.8, 1.0, 0.15)
+			color_wall = Color(0.1, 0.1, 0.15)
+		2: # Dead Sector
+			color_background = Color(0.05, 0.05, 0.05)
+			color_grid = Color(0.5, 0.5, 0.5, 0.2) # Monochromatic grey
+			color_wall = Color(0.2, 0.2, 0.2)
+		3: # Deep Web
+			color_background = Color(0.0, 0.0, 0.0)
+			color_grid = Color(0.4, 0.1, 0.6, 0.2) # Purple
+			color_wall = Color(0.05, 0.0, 0.1)
+		4: # Overclocked Core
+			color_background = Color(0.1, 0.02, 0.02)
+			color_grid = Color(1.0, 0.2, 0.0, 0.2) # Red
+			color_wall = Color(0.2, 0.1, 0.1)
+		5: # Quantum Buffer
+			color_background = Color(0.02, 0.05, 0.05)
+			color_grid = Color(0.0, 1.0, 0.8, 0.2) # Teal
+			color_wall = Color(0.1, 0.2, 0.2)
+		_:
+			pass
+
+func _setup_deletion_zones() -> void:
+	# Add 2-3 dangerous zones that toggle
+	for i in range(randi() % 2 + 2):
+		var rx = randf_range(-400, 400)
+		var ry = randf_range(-200, 200)
+		deletion_zones.append(Rect2(rx, ry, 128, 128))
 
 func _setup_entry_detection() -> void:
 	var area = Area2D.new()
@@ -65,7 +145,7 @@ func _setup_entry_detection() -> void:
 	area.collision_mask = 1 # Player layer
 	var shape = CollisionShape2D.new()
 	var rect = RectangleShape2D.new()
-	rect.size = Vector2(1100, 540) # Detection zone slightly smaller than walls
+	rect.size = Vector2(1280, 720) # Detection zone full room size
 	shape.shape = rect
 	area.add_child(shape)
 	add_child(area)
@@ -79,7 +159,7 @@ func _build_collisions() -> void:
 	var half_w = 640.0
 	var half_h = 360.0
 	var wall_thickness = 16.0
-	var door_size = 40.0
+	var door_size = 180.0 # INCREASED: Make the physical gap much wider for larger sprites!
 	
 	var wall_w = half_w - door_size / 2.0
 	var wall_h = half_h - door_size / 2.0
@@ -121,25 +201,120 @@ func _add_door_blocker(pos: Vector2, size: Vector2) -> void:
 	walls_body.add_child(col)
 	door_blockers.append(col)
 
-func _process(delta: float) -> void:
-	if is_cleared: return
-	
-	# Monitor enemies if locked
-	if doors_locked:
-		var all_dead = true
-		for e in spawned_enemy_nodes:
-			if is_instance_valid(e) and not e.is_queued_for_deletion():
-				all_dead = false
-				break
+func _process(_delta: float) -> void:
+	if tumbleweeds.size() > 0:
+		_process_tumbleweeds(_delta)
+
+	if deletion_zones.size() > 0:
+		_process_deletion_zones(_delta)
 		
-		if all_dead:
-			_on_room_cleared()
+	if floor_name.contains("Deep Web"):
+		_process_tracking_pings(_delta)
+	elif floor_name.contains("Overclocked Core"):
+		_process_exhaust_vents(_delta)
+
+func _process_exhaust_vents(delta: float) -> void:
+	vent_cycle_timer += delta
+	if vent_cycle_timer > 3.0:
+		vent_cycle_timer = 0.0
+		vent_active = !vent_active
+		queue_redraw()
+	
+	if vent_active:
+		var players = get_tree().get_nodes_in_group("player")
+		if players.size() > 0:
+			var p = players[0]
+			var local_p = to_local(p.global_position)
+			for vent in vents:
+				var beam_end = vent.pos + vent.dir * 1000.0
+				# Simple ray-point distance check (vent beam is a line segment)
+				# Since vent.dir is axis aligned, it's easier
+				if vent.dir.x != 0: # Horizontal
+					if abs(local_p.y - vent.pos.y) < 20.0:
+						if (vent.dir.x > 0 and local_p.x > vent.pos.x) or (vent.dir.x < 0 and local_p.x < vent.pos.x):
+							p.take_damage(1)
+				else: # Vertical
+					if abs(local_p.x - vent.pos.x) < 20.0:
+						if (vent.dir.y > 0 and local_p.y > vent.pos.y) or (vent.dir.y < 0 and local_p.y < vent.pos.y):
+							p.take_damage(1)
+
+func _process_tracking_pings(delta: float) -> void:
+	ping_timer -= delta
+	if ping_timer <= 0:
+		ping_timer = 6.0
+		ping_active = true
+		ping_radius = 0.0
+		# Alert enemies
+		var enemies = get_tree().get_nodes_in_group("enemies")
+		for e in enemies:
+			if e.get_parent() == self:
+				# Force AI to target player immediately if within room
+				pass
+	
+	if ping_active:
+		ping_radius += delta * 800.0
+		if ping_radius > 1000.0:
+			ping_active = false
+		queue_redraw()
+
+func _process_deletion_zones(delta: float) -> void:
+	deletion_timer += delta
+	if deletion_timer > 2.0:
+		deletion_timer = 0.0
+		deletion_active = !deletion_active
+		queue_redraw()
+	
+	if deletion_active:
+		var players = get_tree().get_nodes_in_group("player")
+		if players.size() > 0:
+			var p = players[0]
+			var local_p = to_local(p.global_position)
+			for zone in deletion_zones:
+				if zone.has_point(local_p):
+					p.take_damage(1) # Player takes damage if in active zone
+
+func _process_tumbleweeds(delta: float) -> void:
+	var half_w = 640.0 - 40.0 # Collision padding
+	var half_h = 360.0 - 40.0
+	
+	for weed in tumbleweeds:
+		weed.pos += weed.dir * weed.speed * delta
+		
+		# Bounce off walls
+		if abs(weed.pos.x) > half_w:
+			weed.dir.x *= -1
+			weed.pos.x = sign(weed.pos.x) * half_w
+		if abs(weed.pos.y) > half_h:
+			weed.dir.y *= -1
+			weed.pos.y = sign(weed.pos.y) * half_h
+			
+		# Check player hit
+		var players = get_tree().get_nodes_in_group("player")
+		if players.size() > 0:
+			var p = players[0]
+			var local_p = to_local(p.global_position)
+			if weed.pos.distance_to(local_p) < 30.0:
+				p.take_damage(1)
+	queue_redraw()
 
 func _on_player_body_entered(body: Node2D) -> void:
 	if body.is_in_group("player"):
 		var level_gen = get_tree().get_first_node_in_group("level_generator")
 		if level_gen and level_gen.has_method("_on_room_entered"):
 			level_gen._on_room_entered(grid_pos)
+		
+		# Update HUD with player signals
+		var hud = get_tree().get_first_node_in_group("hud")
+		if hud:
+			if not body.health_changed.is_connected(hud._on_player_health_changed):
+				body.health_changed.connect(hud._on_player_health_changed)
+			if body.has_signal("bandwidth_changed") and not body.bandwidth_changed.is_connected(hud._on_bandwidth_changed):
+				body.bandwidth_changed.connect(hud._on_bandwidth_changed)
+			
+			hud.set_player_stats(body.stats)
+			hud._on_player_health_changed(body.current_health, body.stats.max_health)
+			hud._on_bandwidth_changed(body.bandwidth)
+			hud.update_minimap(level_gen, grid_pos)
 		
 		if not is_cleared and not enemies_spawned:
 			# Isaac-style: Spawn enemies when player is deep enough in or after a tiny delay
@@ -157,106 +332,101 @@ func _check_spawn_trigger() -> void:
 		_check_spawn_trigger()
 
 func _draw() -> void:
-	# Draw the room floor
 	var half_w = 640.0
 	var half_h = 360.0
-	var tile_size = 80.0
 	
-	# Base Floor 1 Theme: Basement (Brown/Sepia)
-	var color_a = Color(0.15, 0.12, 0.1)
-	var color_b = Color(0.18, 0.15, 0.13)
-	var wall_color = Color(0.35, 0.3, 0.25)
+	# 1. Draw the server floor
+	draw_rect(Rect2(-half_w, -half_h, half_w * 2, half_h * 2), color_background)
 	
-	# Theme mapping based on floor level
-	if floor_level == 2:
-		# Floor 2 Theme: Caves (Dark Blue/Cyan)
-		color_a = Color(0.08, 0.12, 0.18)
-		color_b = Color(0.1, 0.15, 0.22)
-		wall_color = Color(0.2, 0.28, 0.38)
-	elif floor_level >= 3:
-		# Floor 3+ Theme: Depths (Fleshy Red/Dark Purple)
-		color_a = Color(0.18, 0.08, 0.1)
-		color_b = Color(0.22, 0.1, 0.12)
-		wall_color = Color(0.38, 0.15, 0.2)
-	
-	if is_boss_room:
-		color_a = Color(0.2, 0.05, 0.05)
-		color_b = Color(0.25, 0.08, 0.08)
-	elif is_item_room:
-		color_a = Color(0.25, 0.22, 0.1)
-		color_b = Color(0.3, 0.25, 0.1)
-	elif is_shop_room:
-		color_a = Color(0.1, 0.22, 0.1)
-		color_b = Color(0.15, 0.28, 0.15)
-	elif is_devil_room:
-		color_a = Color(0.15, 0.0, 0.0)
-		color_b = Color(0.2, 0.0, 0.0)
-		wall_color = Color(0.3, 0.05, 0.05)
-	elif is_secret_room:
-		color_a = Color(0.3, 0.25, 0.05)
-		color_b = Color(0.35, 0.3, 0.08)
-		wall_color = Color(0.5, 0.45, 0.15)
+	# 2. Draw Tracking Ping
+	if ping_active:
+		var players = get_tree().get_nodes_in_group("player")
+		if players.size() > 0:
+			var p_pos = to_local(players[0].global_position)
+			draw_arc(p_pos, ping_radius, 0, TAU, 32, Color(0.8, 0.2, 1.0, 0.4 * (1.0 - ping_radius/1000.0)), 4.0)
 
-	# Draw Checkerboard Floor
-	if floor_texture:
-		# We can use draw_texture_rect with tile = true if we setup a region, 
-		# but draw_rect with a texture is simpler for a single call in _draw
-		var floor_rect = Rect2(-half_w, -half_h, half_w * 2, half_h * 2)
-		# tile size 80
-		draw_texture_rect(floor_texture, floor_rect, true)
-	else:
-		var start_x_idx = 0
-		for x in range(int(-half_w), int(half_w), int(tile_size)):
-			var is_color_a = (start_x_idx % 2 == 0)
-			for y in range(int(-half_h), int(half_h), int(tile_size)):
-				var current_color = color_a if is_color_a else color_b
-				draw_rect(Rect2(x, y, tile_size, tile_size), current_color)
-				is_color_a = !is_color_a
-			start_x_idx += 1
-		
-	# Draw Pedestal if item room
-	if is_item_room:
-		draw_circle(Vector2(0, 5), 15, Color(0.4, 0.4, 0.4))
-		draw_rect(Rect2(-10, -5, 20, 10), Color(0.6, 0.6, 0.6))
-	elif is_shop_room:
-		# Draw a decorative rug for the shop
-		draw_rect(Rect2(-150, -30, 300, 60), Color(0.2, 0.1, 0.1))
-	elif is_devil_room:
-		# Blood pool rug
-		draw_circle(Vector2(0, -10), 100, Color(0.4, 0.0, 0.0, 0.3))
-		
-	# Border walls
+	# 2.5 Draw Exhaust Vents
+	for vent in vents:
+		draw_rect(Rect2(vent.pos - Vector2(10, 10), Vector2(20, 20)), Color(0.3, 0.3, 0.3))
+		if vent_active:
+			var beam_color = Color(1.0, 0.2, 0.0, 0.8) # Red beam
+			var beam_end = vent.pos + vent.dir * 1280.0 # Long beam
+			draw_line(vent.pos, beam_end, beam_color, 4.0)
+			# Outer glow
+			draw_line(vent.pos, beam_end, Color(1, 0.5, 0, 0.3), 12.0)
+		else:
+			# Warning flicker
+			if vent_cycle_timer > 2.0:
+				draw_rect(Rect2(vent.pos - Vector2(10, 10), Vector2(20, 20)), Color(1, 0.5, 0, 0.5))
+
+	# 3. Draw the Deletion Zones (if any)
+	if deletion_zones.size() > 0:
+		for zone in deletion_zones:
+			var alpha = 0.4 if deletion_active else 0.05
+			var c = Color(1.0, 0.0, 0.0, alpha) # Red danger
+			draw_rect(zone, c)
+			if deletion_active:
+				# Glitchy border
+				draw_rect(zone, Color(1, 1, 1, 0.2), false, 2.0)
+
+	# 3. Data Trash Tumbleweeds
+	for weed in tumbleweeds:
+		var c = Color(0.6, 0.6, 0.6, 0.8) # Grey trash
+		draw_circle(weed.pos, 15, c)
+		# Draw some glitchy lines inside
+		for i in range(4):
+			var v1 = Vector2(randf_range(-10, 10), randf_range(-10, 10))
+			var v2 = Vector2(randf_range(-10, 10), randf_range(-10, 10))
+			draw_line(weed.pos + v1, weed.pos + v2, Color.WHITE, 1.0)
+
+	# 4. Draw the Neon Grid Matrix
+	var grid_step = 64.0
+	
+	for x in range(int(-half_w), int(half_w), int(grid_step)):
+		draw_line(Vector2(x, -half_h), Vector2(x, half_h), color_grid, 2.0)
+	for y in range(int(-half_h), int(half_h), int(grid_step)):
+		draw_line(Vector2(-half_w, y), Vector2(half_w, y), color_grid, 2.0)
+	
+	# 4. Border Walls
 	var wall_thickness = 16.0
-	draw_rect(Rect2(-half_w, -half_h, half_w * 2, wall_thickness), wall_color) # top
-	draw_rect(Rect2(-half_w, half_h - wall_thickness, half_w * 2, wall_thickness), wall_color) # bottom
-	draw_rect(Rect2(-half_w, -half_h, wall_thickness, half_h * 2), wall_color) # left
-	draw_rect(Rect2(half_w - wall_thickness, -half_h, wall_thickness, half_h * 2), wall_color) # right
-	# Door openings
-	var door_size = 40.0
-	# Locked doors draw red. Open and clear draw floor color. Unconnected draw wall color.
-	var open_color = Color(0.15, 0.12, 0.1)
-	var locked_color = Color(0.8, 0.2, 0.2)
-	var top_c = locked_color if doors_locked else open_color
-	var bot_c = locked_color if doors_locked else open_color
-	var left_c = locked_color if doors_locked else open_color
-	var right_c = locked_color if doors_locked else open_color
+	var door_size = 180.0 
+	
+	draw_rect(Rect2(-half_w, -half_h, half_w * 2, wall_thickness), color_wall) # top
+	draw_rect(Rect2(-half_w, half_h - wall_thickness, half_w * 2, wall_thickness), color_wall) # bottom
+	draw_rect(Rect2(-half_w, -half_h, wall_thickness, half_h * 2), color_wall) # left
+	draw_rect(Rect2(half_w - wall_thickness, -half_h, wall_thickness, half_h * 2), color_wall) # right
+	
+	# 5. Firewalls
+	var open_color = Color(0.0, 0.8, 1.0, 0.2) # Subtle cyan glow for OPEN doors
+	var top_c = color_firewall if doors_locked else open_color
+	var bot_c = color_firewall if doors_locked else open_color
+	var left_c = color_firewall if doors_locked else open_color
+	var right_c = color_firewall if doors_locked else open_color
 	
 	if top_door and top_door.visible: draw_rect(Rect2(-door_size/2, -half_h, door_size, wall_thickness), top_c)
 	if bottom_door and bottom_door.visible: draw_rect(Rect2(-door_size/2, half_h - wall_thickness, door_size, wall_thickness), bot_c)
 	if left_door and left_door.visible: draw_rect(Rect2(-half_w, -door_size/2, wall_thickness, door_size), left_c)
 	if right_door and right_door.visible: draw_rect(Rect2(half_w - wall_thickness, -door_size/2, wall_thickness, door_size), right_c)
 
+	# Special room highlights
+	if is_item_room:
+		draw_circle(Vector2(0, 5), 15, Color(0.2, 0.8, 1.0, 0.3)) # Glowing item pedestal base
+	elif is_shop_room:
+		draw_rect(Rect2(-150, -30, 300, 60), Color(0.1, 0.4, 0.5, 0.2)) # Shop rug
+
 # Open specific doors based on neighbors
 func open_doors(top: bool, bottom: bool, left: bool, right: bool):
 	active_doors = {"top": top, "bottom": bottom, "left": left, "right": right}
 	
-	if top_door: top_door.visible = top
-	if bottom_door: bottom_door.visible = bottom
-	if left_door: left_door.visible = left
-	if right_door: right_door.visible = right
-	
-	# Enable paths through connected doors ONLY if room is cleared/safe
-	_update_door_locks()
+	if is_inside_tree() or top_door != null:
+		_update_visual_doors()
+		_update_door_locks()
+
+func _update_visual_doors():
+	if top_door: top_door.visible = active_doors["top"]
+	if bottom_door: bottom_door.visible = active_doors["bottom"]
+	if left_door: left_door.visible = active_doors["left"]
+	if right_door: right_door.visible = active_doors["right"]
 
 func force_open_door(dir: String) -> void:
 	match dir:
@@ -294,9 +464,11 @@ func spawn_enemies() -> void:
 			var boss = selected_boss.instantiate()
 			boss.position = Vector2.ZERO # Spawn exact center
 			
-			# Randomize boss type for original boss
-			if boss.get("boss_type") != null and randf() < 0.5:
-				boss.boss_type = 1 # DUKE_OF_FLIES
+			# Logic to pick specific boss variation for the generic "Boss" scene
+			if boss.name == "Boss" or boss.get_script().get_global_name() == "Boss":
+				# Randomize between MONSTRO, DUKE, MECH, NECRO, NANITE_SWARM
+				var types = [0, 1, 2, 3, 4] # BossType indices
+				boss.boss_type = types[randi() % types.size()]
 			
 			# Give it the "boss" group for the HUD to find it
 			boss.add_to_group("boss")
@@ -334,7 +506,12 @@ func spawn_enemies() -> void:
 				store_node.price = 15
 			elif pickup_scene:
 				store_node = pickup_scene.instantiate()
-				store_node.price = 5 - (randi() % 2) # 4 or 5 coins
+				store_node.price = 5 - (randi() % 2) # 4 or 5 memory units
+				
+				# NEW: Force it to be a System Repair (Health = Type 0) so it doesn't sell currency!
+				# NOTE: Looking at Pickup.gd, Health is Type 0. User said Type 2 but that's Medium Memory.
+				# I will use Type 0 for Health.
+				store_node.pickup_type = 0 
 				
 			if store_node:
 				var x_offset = -100 + (i * 100)
@@ -379,25 +556,33 @@ func spawn_enemies() -> void:
 			# Choose enemy type based on floor
 			var e_type = 0
 			var roll = randf()
-			if floor_level == 1:
-				if roll < 0.7: e_type = 0 # 70% basic
-				elif roll < 0.9: e_type = 1 # 20% chaser
-				else: e_type = 2 # 10% tank
-			elif floor_level == 2:
-				if roll < 0.3: e_type = 0 # 30% basic
-				elif roll < 0.6: e_type = 1 # 30% chaser
-				elif roll < 0.8: e_type = 2 # 20% tank
-				else: e_type = 3 # 20% shooter
-			else: # Floor 3+
-				if roll < 0.1: e_type = 0 # 10% basic
-				elif roll < 0.3: e_type = 1 # 20% chaser
-				elif roll < 0.6: e_type = 2 # 30% tank
-				else: e_type = 3 # 40% shooter
+			if floor_level == 1: # Localhost
+				if roll < 0.6: e_type = 0 # 60% chaser
+				elif roll < 0.9: e_type = 5 # 30% fly
+				else: e_type = 1 # 10% shooter
+			elif floor_level == 2: # Dead Sector (Recycle Bin)
+				if roll < 0.4: e_type = 7 # 40% snare bot
+				elif roll < 0.7: e_type = 0 # 30% chaser
+				elif roll < 0.9: e_type = 5 # 20% fly
+				else: e_type = 6 # 10% fatty
+			elif floor_level == 3: # Deep Web
+				if roll < 0.3: e_type = 9 # 30% glitch wraith
+				elif roll < 0.6: e_type = 1 # 30% shooter
+				elif roll < 0.8: e_type = 3 # 20% flanker
+				else: e_type = 8 # 20% proxy drone
+			elif floor_level == 4: # Overclocked Core
+				if roll < 0.3: e_type = 2 # 30% tank
+				elif roll < 0.6: e_type = 8 # 30% proxy drone
+				elif roll < 0.8: e_type = 1 # 20% shooter
+				else: e_type = 9 # 20% glitch wraith
+			else: # Floor 5+
+				e_type = randi() % 10 # Total chaos
 				
 			enemy.enemy_type = e_type
 			var offset = Vector2(randf_range(-400, 400), randf_range(-200, 200))
 			enemy.position = offset
 			call_deferred("add_child", enemy)
+			enemy.enemy_died.connect(_on_enemy_died)
 			spawned_enemy_nodes.append(enemy)
 			
 		# Spawn Obstacles & Hazards
@@ -449,6 +634,8 @@ func spawn_enemies() -> void:
 			if node:
 				node.position = pos
 				call_deferred("add_child", node)
+				if "enemy_died" in node:
+					node.enemy_died.connect(_on_enemy_died)
 			
 	# Lock doors to trap player
 	if spawned_enemy_nodes.size() > 0:
@@ -456,6 +643,20 @@ func spawn_enemies() -> void:
 		_update_door_locks()
 	elif not is_boss_room: # Let boss room logic handle itself
 		_on_room_cleared() # Just in case it spawned 0 enemies (if we ever allow that)
+
+func _on_enemy_died() -> void:
+	# Small delay to ensure is_queued_for_deletion is accurate if needed
+	await get_tree().process_frame
+	
+	if doors_locked:
+		var all_dead = true
+		for e in spawned_enemy_nodes:
+			if is_instance_valid(e) and not e.is_queued_for_deletion():
+				all_dead = false
+				break
+		
+		if all_dead:
+			_on_room_cleared()
 
 func _on_room_cleared() -> void:
 	if is_cleared: return

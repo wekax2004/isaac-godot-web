@@ -45,6 +45,14 @@ var active_item_charge: int = 0
 var inventory: Array[ItemData] = []
 
 func _ready() -> void:
+	if GameManager.selected_character:
+		var c = GameManager.selected_character
+		base_max_health = c.health
+		base_damage = c.damage
+		base_speed = c.speed
+		base_fire_rate = c.fire_rate
+		base_range = c.range
+		
 	recalculate_stats()
 
 func add_item(item: ItemData) -> void:

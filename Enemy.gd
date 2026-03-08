@@ -1,6 +1,7 @@
 extends CharacterBody2D
 
-enum EnemyType { CHASER, SHOOTER, TANK, FLANKER, HOPPER, FLY, FATTY }
+enum EnemyType { CHASER, SHOOTER, TANK, FLANKER, HOPPER, FLY, FATTY, SNARE_BOT, PROXY_DRONE, GLITCH_WRAITH }
+signal enemy_died
 
 @export var enemy_type: EnemyType = EnemyType.CHASER
 
@@ -27,6 +28,8 @@ var blood_stain_scene: Resource = preload("res://BloodStain.gd")
 
 # Damage flash
 var flash_timer: float = 0.0
+var is_shielded: bool = false
+var shield_source: Node2D = null
 
 # Damage-over-Time (DoT) System
 var dot_dps: float = 0.0
@@ -35,8 +38,20 @@ var is_dot_active: bool = false
 var dot_color: Color = Color.WHITE
 var dot_tick_timer: float = 0.0 # Time until next tick
 
+var scramble_timer: float = 0.0
+
+# Snares/Wraith state
+var snare_cooldown: float = 0.0
+var phase_timer: float = 0.0
+var is_phasing: bool = false
+var teleport_cooldown: float = 0.0
+
 var parent_room: Node2D = null
 @onready var sprite = $Sprite2D # Ensure Sprite2D exists
+
+func scramble(duration: float) -> void:
+	scramble_timer = duration
+	modulate = Color(1, 1, 0) # Highlight yellow for scramble
 
 func _ready() -> void:
 	add_to_group("enemies")
@@ -82,45 +97,62 @@ func _ready() -> void:
 			max_health = 20.0
 			move_speed = 40.0 # Base speed
 			contact_damage = 2
+		EnemyType.SNARE_BOT:
+			max_health = 6.0
+			move_speed = 50.0
+			contact_damage = 1
+		EnemyType.PROXY_DRONE:
+			max_health = 4.0
+			move_speed = 100.0
+			contact_damage = 0 # No touch damage
+		EnemyType.GLITCH_WRAITH:
+			max_health = 8.0
+			move_speed = 70.0
+			contact_damage = 1
 	
 	health = max_health
 	
 	if sprite:
-		sprite.modulate = Color.WHITE # Reset to white by default
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		match enemy_type:
 			EnemyType.CHASER:
-				sprite.texture = preload("res://assets/sprites/scrap_bot.png")
-				sprite.scale = Vector2(0.12, 0.12)
+				sprite.texture = preload("res://assets/enemy_chaser_mainframe.png")
 			EnemyType.SHOOTER:
-				sprite.texture = preload("res://assets/sprites/turret_droid.png")
-				sprite.scale = Vector2(0.12, 0.12)
+				sprite.texture = preload("res://assets/enemy_shooter_mainframe.png")
 			EnemyType.TANK:
-				sprite.texture = preload("res://assets/sprites/heavy_mech.png")
-				sprite.scale = Vector2(0.15, 0.15)
+				sprite.texture = preload("res://assets/enemy_tank_mainframe.png")
 			EnemyType.FLANKER:
 				sprite.texture = preload("res://assets/sprites/pulse_drone.png")
-				sprite.scale = Vector2(0.1, 0.1)
 			EnemyType.HOPPER:
 				sprite.texture = preload("res://assets/sprites/jump_bot.png")
-				sprite.scale = Vector2(0.12, 0.12)
 			EnemyType.FLY:
-				sprite.texture = preload("res://assets/sprites/nanite_fly.png")
-				sprite.scale = Vector2(0.08, 0.08)
+				sprite.texture = preload("res://assets/enemy_fly_mainframe.png")
 				# Flying enemies skip hole collision
 				set_collision_mask_value(7, false) 
 			EnemyType.FATTY:
 				sprite.texture = preload("res://assets/sprites/shield_bot.png")
-				sprite.scale = Vector2(0.18, 0.18)
+			EnemyType.SNARE_BOT:
+				sprite.texture = preload("res://assets/sprites/scrap_bot.png")
+			EnemyType.PROXY_DRONE:
+				sprite.texture = preload("res://assets/sprites/pulse_drone.png")
+			EnemyType.GLITCH_WRAITH:
+				sprite.texture = preload("res://assets/sprites/scrap_bot.png")
 			_:
 				sprite.texture = preload("res://assets/enemy_basic.png")
-				sprite.scale = Vector2(0.15, 0.15)
-		
-		# Give a color tint to specific types if they share a sprite
-		if enemy_type == EnemyType.HOPPER or enemy_type == EnemyType.FATTY:
-			sprite.modulate = Color(0.8, 0.5, 0.2) if enemy_type == EnemyType.FATTY else Color(0.5, 0.8, 0.2)
-		elif enemy_type == EnemyType.FLY:
-			sprite.modulate = Color(0.5, 0.5, 0.5) # Greyish fly
-			sprite.scale = Vector2(0.06, 0.06)
+			
+		# This magic math forces ANY image to perfectly fit the target size
+		if sprite.texture:
+			var tex_size = sprite.texture.get_size()
+			# Default size for basic mobs (Chaser, Shooter, Flanker)
+			var target_size = Vector2(60.0, 60.0) 
+			
+			# Change the target box size based on what enemy spawned!
+			if enemy_type == EnemyType.TANK: # Tank (Needs to be huge)
+				target_size = Vector2(110.0, 110.0)
+			elif enemy_type == EnemyType.FLY: # Nanite Fly (Needs to be tiny)
+				target_size = Vector2(45.0, 45.0)
+				
+			sprite.scale = target_size / tex_size
 			
 		print("Enemy Spawned: Type ", enemy_type, " (" , EnemyType.keys()[enemy_type], ") Texture: ", sprite.texture.resource_path)
 	
@@ -257,17 +289,29 @@ func _physics_process(delta: float) -> void:
 			queue_redraw()
 	
 	# DoT Ticks (Poison/Fire/etc)
-	if is_dot_active:
-		dot_timer -= delta
-		dot_tick_timer -= delta
-		
-		if dot_tick_timer <= 0:
-			dot_tick_timer = 0.5 # 0.5s intervals
-			take_damage(dot_dps * 0.5)
-				
-		if dot_timer <= 0:
-			is_dot_active = false
+	# Scramble Logic
+	if scramble_timer > 0:
+		scramble_timer -= delta
+		if scramble_timer <= 0:
 			modulate = Color.WHITE
+			player = get_tree().get_nodes_in_group("player")[0]
+		else:
+			# Find a new target (other enemy)
+			var others = get_tree().get_nodes_in_group("enemies")
+			if others.size() > 1:
+				var best_target = null
+				var best_dist = 100000.0
+				for other in others:
+					if other == self: continue
+					var d = global_position.distance_to(other.global_position)
+					if d < best_dist:
+						best_dist = d
+						best_target = other
+				if best_target:
+					player = best_target # Redirect AI targeting
+	
+	# Reset shield status - will be reapplied by Proxies this frame
+	is_shielded = false
 	
 	match enemy_type:
 		EnemyType.CHASER:
@@ -284,6 +328,12 @@ func _physics_process(delta: float) -> void:
 			_ai_fly(delta)
 		EnemyType.FATTY:
 			_ai_fatty(delta)
+		EnemyType.SNARE_BOT:
+			_ai_snare_bot(delta)
+		EnemyType.PROXY_DRONE:
+			_ai_proxy_drone(delta)
+		EnemyType.GLITCH_WRAITH:
+			_ai_glitch_wraith(delta)
 			
 	_check_contact_damage()
 
@@ -397,21 +447,113 @@ func _ai_fatty(delta: float) -> void:
 			velocity = dir_to_player.normalized() * move_speed
 			move_and_slide()
 
-func _shoot_at_player() -> void:
-	can_shoot = false
+func _ai_snare_bot(delta: float) -> void:
+	var dist = global_position.distance_to(player.global_position)
+	var dir_to_player = (player.global_position - global_position).normalized()
 	
+	# Keep distance
+	if dist > 300:
+		velocity = dir_to_player * move_speed
+	elif dist < 200:
+		velocity = -dir_to_player * move_speed
+	else:
+		velocity = Vector2.ZERO
+		
+	move_and_slide()
+	
+	snare_cooldown -= delta
+	if snare_cooldown <= 0 and dist < 450:
+		_shoot_snare()
+		snare_cooldown = 3.5
+
+func _ai_glitch_wraith(delta: float) -> void:
+	phase_timer -= delta
+	if phase_timer <= 0:
+		is_phasing = !is_phasing
+		phase_timer = 2.0 if is_phasing else 1.5
+		if is_phasing:
+			modulate.a = 0.2
+			collision_layer = 0 # Phase through things? 
+			# Actually just collision_mask to avoid being hit
+		else:
+			modulate.a = 1.0
+			collision_layer = 4 # Reset to enemy layer
+			
+	teleport_cooldown -= delta
+	if not is_phasing and teleport_cooldown <= 0:
+		# Teleport behind or near player
+		var offset = Vector2(randf_range(-150, 150), randf_range(-150, 150))
+		global_position = player.global_position + offset
+		teleport_cooldown = 4.0
+		# Visual effect for teleport
+		if parent_room:
+			parent_room.queue_redraw()
+	
+	if not is_phasing:
+		var dir = (player.global_position - global_position).normalized()
+		velocity = dir * move_speed
+		move_and_slide()
+		
+		if can_shoot and randf() < delta * 0.5:
+			_shoot_at_player()
+	else:
+		# Float slowly while phasing
+		velocity = velocity.lerp(Vector2.ZERO, delta * 2.0)
+		move_and_slide()
+
+func _shoot_at_player() -> void:
 	if bullet_scene:
 		var bullet = bullet_scene.instantiate()
 		bullet.global_position = global_position
 		bullet.direction = (player.global_position - global_position).normalized()
+		bullet.speed = 250.0
 		get_tree().current_scene.call_deferred("add_child", bullet)
 	
-	# Fire rate: shoot every 2 seconds
-	await get_tree().create_timer(2.0).timeout
-	if is_instance_valid(self):
-		can_shoot = true
+func _shoot_snare() -> void:
+	snare_cooldown = 2.0
+	# Placeholder: Stops the crash until we build the snare bullet!
+	
+func _ai_proxy_drone(delta: float) -> void:
+	# Orbit the player or stay near other enemies
+	# Let's find a nearby enemy to protect
+	var target_enemy = null
+	var others = get_tree().get_nodes_in_group("enemies")
+	for other in others:
+		if other == self: continue
+		if other.enemy_type == EnemyType.PROXY_DRONE: continue
+		target_enemy = other
+		break
+		
+	if target_enemy:
+		var dir = (target_enemy.global_position - global_position).normalized()
+		var dist = global_position.distance_to(target_enemy.global_position)
+		if dist > 60:
+			velocity = dir * move_speed
+		else:
+			velocity = Vector2.ZERO
+		move_and_slide()
+		
+		# Shield them
+		if dist < 150:
+			target_enemy.apply_shield(self)
+	else:
+		_ai_fly(delta) # Fallback to fly AI if alone
+
+func apply_shield(source: Node2D) -> void:
+	is_shielded = true
+	shield_source = source
 
 func take_damage(amount: float) -> void:
+	if is_shielded and is_instance_valid(shield_source):
+		# Visual feedback for shield hit
+		modulate = Color(1, 1, 1) # Flash white
+		await get_tree().create_timer(0.05).timeout
+		modulate = Color(1, 0.8, 0) # Back to shield color
+		return
+		
+	if enemy_type == EnemyType.GLITCH_WRAITH and is_phasing:
+		return # Immortal while phasing
+		
 	health -= amount
 	flash_timer = 0.1
 	queue_redraw()
@@ -439,6 +581,7 @@ func die() -> void:
 		# Add to parent room so it persists with the room, not globally
 		get_parent().call_deferred("add_child", stain)
 		
+	enemy_died.emit()
 	call_deferred("queue_free")
 
 func apply_dot(dps: float, duration: float, color: Color) -> void:

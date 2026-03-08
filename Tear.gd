@@ -24,6 +24,7 @@ var splash_scene: PackedScene = preload("res://HitSplash.tscn")
 @onready var sprite = $Sprite2D
 
 func _ready() -> void:
+	self.scale = Vector2(1.3, 1.3)
 	queue_redraw()
 	# Apply visual item synergy changes
 	if sprite and color_override != Color.WHITE:

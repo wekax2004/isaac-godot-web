@@ -83,3 +83,4 @@ dash={
 [autoload]
 
 SFX="*res://SFX.gd"
+GameManager="*res://GameManager.gd"

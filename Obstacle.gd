@@ -4,6 +4,7 @@ extends StaticBody2D
 @export var obstacle_type: int = -1
 
 func _ready() -> void:
+	self.scale = Vector2(1.4, 1.4)
 	if obstacle_type == -1:
 		obstacle_type = randi() % 2
 		
