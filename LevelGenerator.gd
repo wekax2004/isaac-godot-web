@@ -79,7 +79,8 @@ func next_floor() -> void:
 		"The Dark Fiber",
 		"The Root Partition",
 		"The Neural Net",
-		"The Mainframe Core"
+		"The Mainframe Core",
+		"THE CORE MAINFRAME [SECRET]"
 	]
 	var floor_name = floor_names[mini(floor_num - 1, floor_names.size() - 1)]
 	
@@ -186,6 +187,30 @@ func generate_floor(keep_player: bool = false, override_name: String = "") -> vo
 		room_grid[item_room_pos].is_item_room = true
 	if shop_room_pos != null and room_grid.has(shop_room_pos):
 		room_grid[shop_room_pos].is_shop_room = true
+		
+	# 2.5.5 NPC & Buffer Rooms (Synergy for v1.5.0)
+	var npc_room_pos = null
+	var buffer_room_pos = null
+	
+	if leaves.size() > 2: npc_room_pos = leaves[2]
+	if leaves.size() > 3: buffer_room_pos = leaves[3]
+	
+	# Fallback search if we didn't have enough leaves
+	if npc_room_pos == null:
+		for node in fallback_nodes:
+			if node != item_room_pos and node != shop_room_pos:
+				npc_room_pos = node
+				break
+	if buffer_room_pos == null:
+		for node in fallback_nodes:
+			if node != item_room_pos and node != shop_room_pos and node != npc_room_pos:
+				buffer_room_pos = node
+				break
+				
+	if npc_room_pos != null and room_grid.has(npc_room_pos):
+		room_grid[npc_room_pos].is_npc_room = true
+	if buffer_room_pos != null and room_grid.has(buffer_room_pos):
+		room_grid[buffer_room_pos].is_buffer_room = true
 	
 	# 2.6 Assign random layouts to some rooms
 	_assign_random_layouts()

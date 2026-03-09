@@ -111,6 +111,8 @@ func _apply_piercing_damage() -> void:
 			break
 
 func _explode_at(pos: Vector2) -> void:
+	if VFXManager:
+		VFXManager.shake_screen(2.0, 0.1)
 	SFX.play_explosion()
 	var blast_radius = 60.0 # Smaller radius for laser pulses
 	var enemies = get_tree().get_nodes_in_group("enemies")

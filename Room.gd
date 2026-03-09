@@ -34,6 +34,8 @@ var is_item_room: bool = false
 var is_shop_room: bool = false
 var is_devil_room: bool = false
 var is_secret_room: bool = false
+var is_npc_room: bool = false
+var is_buffer_room: bool = false
 var secret_revealed: bool = false
 var player_ref: Node2D = null
 @export var floor_level: int = 1
@@ -71,6 +73,8 @@ var door_blockers: Array[CollisionShape2D] = []
 var active_doors: Dictionary = {"top": false, "bottom": false, "left": false, "right": false}
 var doors_locked: bool = false
 var spawned_enemy_nodes: Array[Node] = []
+var current_wave: int = 0
+var max_waves: int = 3
 
 func _ready() -> void:
 	queue_redraw()
@@ -131,6 +135,10 @@ func _apply_theme() -> void:
 			color_wall = Color(0.1, 0.2, 0.2)
 		_:
 			pass
+			
+	if is_buffer_room:
+		color_background = Color(0.05, 0.0, 0.05) # Dark Purple/Magenta for challenges
+		color_grid = Color(1.0, 0.0, 1.0, 0.1)
 
 func _setup_deletion_zones() -> void:
 	# Add 2-3 dangerous zones that toggle
@@ -498,6 +506,18 @@ func spawn_enemies() -> void:
 		add_child(item)
 		_on_room_cleared()
 		
+	elif is_npc_room:
+		var npc_script = load("res://RogueAI.gd")
+		var npc = Node2D.new()
+		npc.set_script(npc_script)
+		npc.position = Vector2.ZERO
+		add_child(npc)
+		_on_room_cleared()
+		
+	elif is_buffer_room:
+		# Challenge Room: Spawn a series of items after waves. For now, just a hard combat room.
+		_spawn_challenge_waves()
+		
 	elif is_shop_room:
 		var items_to_spawn = 3
 		for i in range(items_to_spawn):
@@ -700,3 +720,52 @@ func _get_unique_item_id(min_id: int = 0, max_id: int = 23) -> int:
 	if used != null:
 		used.append(id)
 	return id
+
+func _spawn_challenge_waves() -> void:
+	current_wave = 1
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud:
+		hud.show_popup("BUFFER OVERFLOW: CLEAR WAVES FOR DATA RECOVERY [1/3]")
+	_spawn_wave_enemies()
+	doors_locked = true
+	_update_door_locks()
+
+func _spawn_wave_enemies() -> void:
+	# Spawn 3-5 random enemies
+	var count = 3 + current_wave
+	for i in range(count):
+		var enemy = enemy_scene.instantiate()
+		# Random position
+		enemy.position = Vector2(randf_range(-450, 450), randf_range(-250, 250))
+		add_child(enemy)
+		enemy.enemy_died.connect(_on_enemy_defeated)
+		spawned_enemy_nodes.append(enemy)
+
+func _on_enemy_defeated(enemy: Node) -> void:
+	if enemy in spawned_enemy_nodes:
+		spawned_enemy_nodes.erase(enemy)
+		
+	if spawned_enemy_nodes.is_empty() and is_buffer_room:
+		if current_wave < max_waves:
+			current_wave += 1
+			var hud = get_tree().get_first_node_in_group("hud")
+			if hud:
+				hud.show_popup("CLEANING BUFFER... NEXT WAVE [ " + str(current_wave) + "/3 ]")
+			await get_tree().create_timer(1.2).timeout
+			if is_instance_valid(self):
+				_spawn_wave_enemies()
+		else:
+			_on_buffer_cleared()
+
+func _on_buffer_cleared() -> void:
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud:
+		hud.show_popup("BUFFER FLUSHED: REWARDS RECOVERED")
+	# Spawn 2 items in the center
+	for i in range(2):
+		var item = item_scene.instantiate()
+		item.position = Vector2((i - 0.5) * 120.0, 0)
+		item.item_id = _get_unique_item_id()
+		add_child(item)
+	
+	_on_room_cleared()

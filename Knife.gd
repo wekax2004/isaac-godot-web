@@ -12,6 +12,7 @@ var is_returning: bool = false
 var size_mult: float = 1.0
 var is_poison: bool = false
 var is_explosive: bool = false
+var has_toxic_blade: bool = false
 var splash_scene: PackedScene = preload("res://HitSplash.tscn")
 
 func _ready() -> void:
@@ -47,7 +48,8 @@ func _on_body_entered(body: Node2D) -> void:
 			body.take_damage(damage)
 		
 		if is_poison and body.has_method("apply_dot"):
-			body.apply_dot(1.0, 3.0, Color(0.2, 0.9, 0.1))
+			var dot_dmg = 2.5 if has_toxic_blade else 1.0
+			body.apply_dot(dot_dmg, 4.0, Color(0.2, 0.9, 0.1))
 		if is_explosive:
 			if body.has_method("apply_dot"):
 				body.apply_dot(1.5, 2.0, Color(1.0, 0.4, 0.0))
@@ -59,6 +61,8 @@ func _on_body_entered(body: Node2D) -> void:
 func _draw() -> void:
 	# Draw a knife shape
 	var knife_color = Color(0.7, 0.75, 0.8) # Steel
+	if has_toxic_blade:
+		knife_color = Color(0.3, 0.8, 0.2) # Venomous Green
 	var handle_color = Color(0.4, 0.25, 0.15) # Wood
 	
 	# Blade (Triangle)

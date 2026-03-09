@@ -33,6 +33,7 @@ var has_poison: bool = false
 var has_explosive: bool = false
 var tear_size_mult: float = 1.0
 var current_tear_color: Color = Color.WHITE
+var active_synergies: Dictionary = {}
 
 # Global Floor Progress
 var current_floor: int = 1
@@ -94,6 +95,7 @@ func recalculate_stats() -> void:
 	has_explosive = false
 	tear_size_mult = 1.0
 	current_tear_color = Color.WHITE # Or whatever default
+	active_synergies = {}
 	
 	var total_mult_damage = 1.0
 	var total_mult_speed = 1.0
@@ -145,6 +147,17 @@ func recalculate_stats() -> void:
 	if range < 50.0: range = 50.0
 	
 	print("Recalculated Stats -> DMG: ", damage, " | SPD: ", speed, " | FIRE RATE: ", fire_rate, " | RANGE: ", range)
+	
+	# 4. Synergy Detection
+	if has_laser and has_homing:
+		active_synergies["laser_homing"] = true
+	if has_explosive and has_rubber_cement:
+		active_synergies["explosive_ricochet"] = true
+	if has_knife and has_poison:
+		active_synergies["toxic_blade"] = true
+	if has_parasite and has_explosive:
+		active_synergies["explosive_parasite"] = true
+		
 	stats_changed.emit()
 	if AchievementManager:
 		AchievementManager.check_stats(self)

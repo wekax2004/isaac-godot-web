@@ -9,7 +9,7 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	
 	if has_node("VersionLabel"):
-		$VersionLabel.text = "VER: 1.4.1 (STABILITY REFINEMENTS)"
+		$VersionLabel.text = "VER: 1.5.0 (THE OMEGA OVERHAUL)"
 	
 	_setup_character_select()
 
@@ -189,14 +189,14 @@ func _buy_upgrade(id: String, cost: int, menu: Panel) -> void:
 			get_tree().create_timer(0.5).timeout.connect(label.set_modulate.bind(Color(0.2, 0.8, 1.0)))
 
 func _on_prev_char() -> void:
-	var ids = ["0x01", "0x02", "0x03"]
+	var ids = ["0x01", "0x02", "0x03", "0x04", "0x05"]
 	var idx = ids.find(char_id)
 	idx = (idx - 1 + ids.size()) % ids.size()
 	char_id = ids[idx]
 	_update_char_preview()
 
 func _on_next_char() -> void:
-	var ids = ["0x01", "0x02", "0x03"]
+	var ids = ["0x01", "0x02", "0x03", "0x04", "0x05"]
 	var idx = ids.find(char_id)
 	idx = (idx + 1) % ids.size()
 	char_id = ids[idx]
@@ -205,9 +205,27 @@ func _on_next_char() -> void:
 func _update_char_preview() -> void:
 	var c = CharacterRegistry.get_character(char_id)
 	GameManager.selected_character = c
-	char_label.text = "[ SELECT INSTANCE: " + c.character_name + " ]"
-	desc_label.text = c.description + "\n\nPASSIVE: " + c.passive_description
-	char_label.modulate = c.sprite_color
+	
+	var is_unlocked = true
+	if c.unlocked_by_achievement != "":
+		is_unlocked = SaveSystem.has_achievement(c.unlocked_by_achievement)
+		
+	if is_unlocked:
+		char_label.text = "[ SELECT INSTANCE: " + c.character_name + " ]"
+		desc_label.text = c.description + "\n\nPASSIVE: " + c.passive_description
+		char_label.modulate = c.sprite_color
+	else:
+		char_label.text = "[ INSTANCE LOCKED ]"
+		var req = c.unlocked_by_achievement.to_upper().replace("_", " ")
+		desc_label.text = "ERROR: ACCESS DENIED\nREQUIREMENT: UNLOCK " + req + " ACHIEVEMENT"
+		char_label.modulate = Color(0.4, 0.4, 0.4)
+		
+	# Find start button in children or by name
+	for child in get_children():
+		if child is Button and (child.text.contains("EXECUTE") or child.text.contains("LOCKED")):
+			child.disabled = not is_unlocked
+			child.text = "EXECUTE: " + c.character_name if is_unlocked else "SYSTEM LOCKED"
+			break
 
 func _on_play_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://LevelGenerator.tscn")

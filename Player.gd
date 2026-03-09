@@ -369,6 +369,10 @@ func _spawn_tear(dir: Vector2) -> void:
 	bullet.tear_size = stats.tear_size_mult * damage_scale
 	bullet.color_override = stats.current_tear_color
 	
+	if stats.has_synergy("explosive_ricochet"):
+		bullet.has_explosive_ricochet = true
+		bullet.color_override = Color(1.0, 0.5, 0.1) # Bright orange for synergy
+	
 	get_tree().current_scene.call_deferred("add_child", bullet)
 
 func fire_laser(direction: Vector2) -> void:
@@ -398,7 +402,10 @@ func _spawn_laser(dir: Vector2) -> void:
 	laser.max_range = stats.range
 	laser.is_poison = stats.has_poison
 	laser.is_explosive = stats.has_explosive
-	laser.is_homing = stats.has_homing
+	laser.is_homing = stats.has_homing or stats.has_synergy("laser_homing")
+	
+	if stats.has_synergy("laser_homing"):
+		laser.color = Color(1.0, 0.1, 1.0) # Pink/Magenta for synergy
 	
 	add_child(laser)
 
@@ -437,6 +444,9 @@ func _spawn_knife(dir: Vector2) -> void:
 		knife.size_mult = stats.tear_size_mult
 		knife.is_poison = stats.has_poison
 		knife.is_explosive = stats.has_explosive
+		
+		if stats.has_synergy("toxic_blade"):
+			knife.has_toxic_blade = true
 		
 		get_tree().current_scene.call_deferred("add_child", knife)
 

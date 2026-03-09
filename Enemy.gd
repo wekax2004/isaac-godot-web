@@ -2,7 +2,7 @@ extends CharacterBody2D
 class_name Enemy
 
 enum EnemyType { CHASER, SHOOTER, TANK, FLANKER, HOPPER, FLY, FATTY, SNARE_BOT, PROXY_DRONE, GLITCH_WRAITH }
-signal enemy_died
+signal enemy_died(enemy)
 
 @export var enemy_type: EnemyType = EnemyType.CHASER
 
@@ -587,6 +587,10 @@ func take_damage(amount: float) -> void:
 		
 	health -= amount
 	flash_timer = 0.1
+	if VFXManager:
+		VFXManager.flash_node(self, 0.05)
+		if amount > 5.0: # Heavy hit
+			VFXManager.spawn_sparks(global_position, Color(1, 1, 0.5), 3)
 	queue_redraw()
 	
 	if health <= 0:
@@ -612,7 +616,7 @@ func die() -> void:
 		# Add to parent room so it persists with the room, not globally
 		get_parent().call_deferred("add_child", stain)
 		
-	enemy_died.emit()
+	enemy_died.emit(self)
 	call_deferred("queue_free")
 
 func apply_dot(dps: float, duration: float, color: Color) -> void:

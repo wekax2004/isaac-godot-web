@@ -23,3 +23,4 @@ class_name CharacterData
 @export_group("Narrative")
 @export var description: String = ""
 @export var passive_description: String = ""
+@export var unlocked_by_achievement: String = "" # ID of achievement required

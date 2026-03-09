@@ -40,5 +40,30 @@ static func get_character(id: String) -> CharacterData:
 			data.starting_items = [] # Liquid cooling (ID TBD)
 			data.description = "Corrupted buffer overflow exploit."
 			data.passive_description = "Tears leave a trail of corrosive blue coolant."
+		"0x04":
+			data.character_name = "OVERCLOCKER"
+			data.character_id = "0x04"
+			data.health = 1
+			data.damage = 3.0
+			data.speed = 360.0
+			data.fire_rate = 0.15
+			data.range = 380.0
+			data.sprite_color = Color(1.0, 0.8, 0.0) # Gold/Yellow
+			data.unlocked_by_achievement = "overclocker"
+			data.description = "Experimental high-voltage core."
+			data.passive_description = "Extremely high fire rate but very fragile (1 HP)."
+		"0x05":
+			data.character_name = "SYSTEM ADMIN"
+			data.character_id = "0x05"
+			data.health = 3
+			data.damage = 4.0
+			data.speed = 300.0
+			data.fire_rate = 0.4
+			data.range = 400.0
+			data.sprite_color = Color(1.0, 1.0, 1.0) # White/Silver
+			data.starting_items = [32] # Debug Console
+			data.unlocked_by_achievement = "root_access"
+			data.description = "Authorized administrative presence."
+			data.passive_description = "Starts with full floor map access (Debug Console)."
 			
 	return data

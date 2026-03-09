@@ -16,6 +16,7 @@ var is_rubber_cement: bool = false
 var tear_size: float = 1.0
 var color_override: Color = Color.WHITE
 var can_split: bool = true # Prevent infinite recursion
+var has_explosive_ricochet: bool = false
 
 var splash_scene: PackedScene = preload("res://HitSplash.tscn")
 
@@ -161,6 +162,10 @@ func _on_body_entered(body: Node2D) -> void:
 			# This is a bit naive but works for simple rectangular rooms.
 			direction = -direction
 			distance_traveled = 0 # reset distance to allow longer bounce
+			
+			if has_explosive_ricochet:
+				_explode()
+				
 			return
 			
 		if is_explosive:
@@ -190,13 +195,15 @@ func _split_tears() -> void:
 		new_tear.is_poison = is_poison
 		new_tear.is_explosive = is_explosive
 		
-		if is_explosive:
+		if is_explosive or has_explosive_ricochet:
 			new_tear.is_explosive = true
 			new_tear.damage = damage * 0.8
 		
 		get_parent().call_deferred("add_child", new_tear)
 
 func _explode() -> void:
+	if VFXManager:
+		VFXManager.shake_screen(3.0, 0.15)
 	SFX.play_explosion()
 	var blast_radius = 100.0
 	var enemies = get_tree().get_nodes_in_group("enemies")
