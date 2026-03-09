@@ -668,7 +668,7 @@ func spawn_enemies() -> void:
 	elif not is_boss_room: # Let boss room logic handle itself
 		_on_room_cleared() # Just in case it spawned 0 enemies (if we ever allow that)
 
-func _on_enemy_died() -> void:
+func _on_enemy_died(_enemy: Node = null) -> void:
 	# Small delay to ensure is_queued_for_deletion is accurate if needed
 	await get_tree().process_frame
 	
@@ -725,7 +725,8 @@ func _spawn_challenge_waves() -> void:
 	current_wave = 1
 	var hud = get_tree().get_first_node_in_group("hud")
 	if hud:
-		hud.show_popup("BUFFER OVERFLOW: CLEAR WAVES FOR DATA RECOVERY [1/3]")
+		# HUD.show_popup("INSUFFICIENT ACCESS PRIVILEGES (Low HP)")
+		pass
 	_spawn_wave_enemies()
 	doors_locked = true
 	_update_door_locks()
@@ -750,7 +751,8 @@ func _on_enemy_defeated(enemy: Node) -> void:
 			current_wave += 1
 			var hud = get_tree().get_first_node_in_group("hud")
 			if hud:
-				hud.show_popup("CLEANING BUFFER... NEXT WAVE [ " + str(current_wave) + "/3 ]")
+				# hud.show_popup("CLEANING BUFFER... NEXT WAVE [ " + str(current_wave) + "/3 ]")
+				pass
 			await get_tree().create_timer(1.2).timeout
 			if is_instance_valid(self):
 				_spawn_wave_enemies()
@@ -760,7 +762,8 @@ func _on_enemy_defeated(enemy: Node) -> void:
 func _on_buffer_cleared() -> void:
 	var hud = get_tree().get_first_node_in_group("hud")
 	if hud:
-		hud.show_popup("BUFFER FLUSHED: REWARDS RECOVERED")
+		# HUD.show_popup("CONNECTION ESTABLISHED: DATA ACQUIRED")
+		pass
 	# Spawn 2 items in the center
 	for i in range(2):
 		var item = item_scene.instantiate()

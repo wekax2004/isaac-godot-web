@@ -16,7 +16,8 @@ func _on_interact() -> void:
 	if player.stats.max_health > 1:
 		_execute_trade(player)
 	else:
-		HUD.show_popup("INSUFFICIENT ACCESS PRIVILEGES (Low HP)")
+		# HUD.show_popup("INSUFFICIENT ACCESS PRIVILEGES (Low HP)")
+		pass
 
 func _execute_trade(player) -> void:
 	trade_completed = true
@@ -34,7 +35,8 @@ func _execute_trade(player) -> void:
 	
 	get_parent().add_child(item)
 	
-	HUD.show_popup("CONNECTION ESTABLISHED: DATA ACQUIRED")
+	# HUD.show_popup("CONNECTION ESTABLISHED: DATA ACQUIRED")
+	pass
 	
 	# Visual effect
 	if has_node("Sprite2D"):
