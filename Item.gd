@@ -2,7 +2,7 @@ extends Area2D
 
 # 24 unique items with diverse effects
 # 44 unique items with diverse effects
-const ITEM_COUNT = 44
+const ITEM_COUNT = 50
 @export var item_id: int = -1
 @export var price: int = 0
 @export var price_hp: int = 0
@@ -12,50 +12,56 @@ var tooltip_bob: float = 0.0
 
 # Item database: [name, description]
 const ITEM_DB = [
-	["Damage Core", "+1.5 Damage"],
-	["Speed Boots", "+40 Speed"],
-	["Scope", "+150 Range"],
-	["Scattergun", "3-Way Spread\n0.7x Damage"],
-	["Acid Rounds", "Poison DoT\nEnemies take damage over time"],
-	["Neural Tracker", "Homing Bullets\nProjectiles seek enemies"],
-	["Heavy Caliber", "HUGE Bullets\n+50% Damage, Slower fire"],
-	["Sacred Core", "Homing + 2.3x Damage\nVery slow, +1 HP"],
-	["Hyper-Accelerator", "Machine Gun!\n0.2x Damage, Tiny bullets"],
-	["Power Node", "1.5x Damage Multiplier"],
-	["Overclock", "Fast Fire + Speed\nHalf Range"],
-	["Mutant Serum", "+1 Damage\n+30 Speed"],
-	["Omni-Cell", "ALL Stats Up!\nDMG, SPD, Range, HP, Size"],
-	["Phase Rounds", "Piercing + Big Bullets\n-30% Range"],
-	["Energy Blade", "3x Damage!\n-75% Range, Slow fire"],
-	["Explosive Munitions", "Exploding Bullets!\nAoE splash damage"],
-	["Adrenaline Injector", "+1 Damage\n+100 Range"],
-	["Frenzy Cell", "Fast Fire + Speed\n-20% Damage"],
-	["Void Catalyst", "+1 Damage\nPiercing Bullets"],
-	["Laser Module", "Piercing + Range\nFaster fire, Green laser"],
-	["Defense Matrix", "Orbital Familiar\nBlocks shots, deals contact damage"],
-	["Spectral Drone", "Follower Familiar\nShoots spectral bullets"],
-	["Energy Shield", "ACTIVE (3 rooms)\nGrants temporary invincibility"],
-	["Drone Swarm", "ACTIVE (2 rooms)\nSpawns 3 friendly attack drones"],
-	["Scrap Metal", "It's just scrap.\nDoes absolutely nothing."],
-	["Particle Cannon", "Energy Beam!\nCharge to fire a devastating laser"],
-	["Auto-Feeder", "Fire rate UP\nDamage DOWN"],
-	["Macro Lens", "Mega Bullets\nDamage UP, Fire rate DOWN"],
-	["Splinter Rounds", "Split!\nBullets split on impact"],
-	["Ricochet Modules", "Bouncing Bullets\nBullets bounce off walls"],
-	["Solid State Drive", "+0.5 Speed\n+1 Max Health"],
-	["GPU Overclock", "1.5x Damage\n+20% Fire Rate delay"],
-	["Debug Console", "ACTIVE (4 rooms)\nReveals the floor map"],
-	["Malware Suite", "Viral Infection\nChance to slow enemies on hit"],
-	["Ethernet Cable", "+200 range\nDirect connection!"],
-	["RGB Fan", "+10% Spd & Dmg\nRainbow Projectiles!"],
-	["Echo Request", "Boomerang Bullets\nProjectiles return to sender"],
-	["Signal Booster", "Signal Strength UP\nDamage increases with distance"],
-	["Fragmentation Packet", "Burst Mode\nBullets split at max range"],
-	["Cyclotron", "Orbital Shield\nBullets orbit around you"],
-	["Long-Range Wifi", "+250 Range\nConnect from anywhere"],
-	["Fiber Optic Link", "+150 Range\n+20 Speed"],
-	["Satellite Uplink", "+300 Range\n+0.5 Damage"],
-	["Signal Repeater", "+100 Range\nFast Fire UP"],
+	["Damage Core", "Overclocks weapon output voltage.\n+1.5 Flat Damage"],
+	["Speed Boots", "Hydraulic actuators with jet-assist.\n+40 Flat Movement Speed"],
+	["Scope", "Neural-link targeting array.\n+150 Combat Range"],
+	["Scattergun", "Multi-barrel discharge module.\n3-Way Spread | 0.7x Damage"],
+	["Acid Rounds", "Corrosive payload injection.\nApplies Poison Damage over time"],
+	["Neural Tracker", "Predictive algorithm for projectiles.\nHoming shots seek targets"],
+	["Heavy Caliber", "High-mass kinetic slugs.\n+50% Damage | -30% Fire Rate"],
+	["Sacred Core", "Enchanted server-side processor.\nHoming | 2.3x Damage | +1 HP"],
+	["Hyper-Accelerator", "Gatling-style rapid cycling.\nInsane Fire Rate | 0.2x Damage"],
+	["Power Node", "Amplifies base energy levels.\n1.5x Damage Multiplier"],
+	["Overclock", "Bypasses safety limiters.\nFast Fire & Spd | -50% Range"],
+	["Mutant Serum", "Experimental bio-code injection.\n+1 Damage | +30 Speed"],
+	["Omni-Cell", "Master configuration packet.\nALL Stats Up! (Dmg, Spd, Rng, HP)"],
+	["Phase Rounds", "Quantum-tunneling projectiles.\nPiercing | -30% Range | Big Bullets"],
+	["Energy Blade", "High-frequency plasma edge.\n3x Damage | Melee Range | Slow fire"],
+	["Explosive Munitions", "Volatile thermal detonators.\nProjectiles explode on contact (AoE)"],
+	["Adrenaline Injector", "Burst of overclocking chemical.\n+1 Damage | +100 Range"],
+	["Frenzy Cell", "Hyper-active processing state.\nFast Fire & Speed | -20% Damage"],
+	["Void Catalyst", "Exotic matter compression.\n+1 Damage | Piercing Bullets"],
+	["Laser Module", "Photon-coherent beam emitter.\nGreen Laser | Piercing | Fast Fire"],
+	["Defense Matrix", "Orbital shielding drone.\nBlocks shots | Deals contact damage"],
+	["Spectral Drone", "Phase-shifted scanner familiar.\nShoots piercing spectral bullets"],
+	["Energy Shield", "Localized EMP field (3 Rooms).\nACTIVE: Grants temporary invincibility"],
+	["Drone Swarm", "Automated deployment (2 Rooms).\nACTIVE: Spawns 3 seeker drones"],
+	["Scrap Metal", "Raw silicon and copper waste.\nEffect: None (Useless Junk)"],
+	["Particle Cannon", "Ionic beam charger.\nACTIVE: Hold to fire high-dmg laser"],
+	["Auto-Feeder", "Belt-fed ammunition loader.\nMassive Fire Rate | Reduced Damage"],
+	["Macro Lens", "Focuses energy into large shots.\nHigh Damage | Slow Fire | Huge Size"],
+	["Splinter Rounds", "Structural instability module.\nProjectiles split into 2 on impact"],
+	["Ricochet Modules", "Elastic kinetic coating.\nProjectiles bounce off walls"],
+	["Solid State Drive", "Optimized data read/write speeds.\n+50 Speed | +1 Max Health"],
+	["GPU Overclock", "Parallel processing amplification.\n1.5x Damage Multiplier"],
+	["Debug Console", "Root access to floor data (4 Rooms).\nACTIVE: Reveals the entire map"],
+	["Malware Suite", "System-level viral infection.\nSlows enemies on hit (Poison base)"],
+	["Ethernet Cable", "Hard-wired targeting link.\n+200 Range | Blue Bullets"],
+	["RGB Fan", "Aesthetic performance boost.\n+10% Spd & Dmg | Rainbow Bullets"],
+	["Echo Request", "Bidirectional data relay.\nBoomerang Bullets (return on range)"],
+	["Signal Booster", "Signal amplification with distance.\nDamage increases further away"],
+	["Fragmentation Packet", "Split-on-distance protocol.\nBullets split at max range"],
+	["Cyclotron", "Rotational momentum module.\nProjectiles orbit the player"],
+	["Long-Range Wifi", "Extended field transceivers.\n+250 Flat Range"],
+	["Fiber Optic Link", "Ultra-low latency data transfer.\n+150 Range | +20 Speed"],
+	["Satellite Uplink", "Orbital synchronization link.\n+300 Range | +0.5 Damage"],
+	["Signal Repeater", "Signal strength regeneration.\n+100 Range | +20% Fire Rate"],
+	["L3 Cache", "Fast-access instruction buffer.\n15% Chance to fire a Double Shot"],
+	["DDR5 RAM", "high-bandwidth system memory.\n+50 Speed | +20% Dash Distance"],
+	["Multi-Threading", "Simultaneous process execution.\n+10% Fire Rate | +10% Damage"],
+	["Liquid Cooling", "Advanced heat dissipation.\n+20% Fire Rate | +20 Speed"],
+	["NVMe Storage", "Ultra-fast storage interface.\n+70 Speed | Instant room data"],
+	["Quantum CPU", "Sub-atomic processing core.\n1.2x Damage | 1.2x Fire Rate"],
 ]
 
 func _ready() -> void:
@@ -267,6 +273,35 @@ func _draw() -> void:
 			draw_line(Vector2(-5, 10), Vector2(0, -10), Color.GRAY, 2)
 			draw_line(Vector2(5, 10), Vector2(0, -10), Color.GRAY, 2)
 			draw_circle(Vector2(0, -10), 3, Color.ORANGE)
+		44: # L3 Cache
+			draw_rect(Rect2(-6, -6, 12, 12), Color(0.3, 0.3, 0.4))
+			draw_rect(Rect2(-3, -3, 6, 6), Color.GOLD)
+			draw_line(Vector2(-6, 0), Vector2(6, 0), Color.CYAN, 1)
+			draw_line(Vector2(0, -6), Vector2(0, 6), Color.CYAN, 1)
+		45: # DDR5 RAM
+			draw_rect(Rect2(-10, -3, 20, 6), Color(0.1, 0.1, 0.2))
+			for i in range(5):
+				draw_rect(Rect2(-8 + i*3.5, -2, 2, 4), Color(0.1, 0.5, 0.9))
+			draw_line(Vector2(-10, 3), Vector2(-8, 3), Color.GOLD, 2)
+		46: # Multi-Threading
+			for i in range(2):
+				for j in range(2):
+					draw_rect(Rect2(-6 + i*7, -6 + j*7, 5, 5), Color(0.4, 0.4, 0.4))
+					draw_rect(Rect2(-4 + i*7, -4 + j*7, 1, 1), Color.CYAN)
+		47: # Liquid Cooling
+			draw_rect(Rect2(-7, -4, 14, 8), Color(0.2, 0.2, 0.2)) # Pump
+			draw_polyline(PackedVector2Array([Vector2(-10, -8), Vector2(-7, -4), Vector2(0, -4), Vector2(7, -4), Vector2(10, -8)]), Color(0.2, 0.6, 1.0), 3)
+		48: # NVMe Storage
+			draw_rect(Rect2(-10, -2, 20, 4), Color(0.1, 0.1, 0.1))
+			draw_rect(Rect2(-9, -1, 3, 2), Color(0.3, 0.3, 0.3))
+			draw_line(Vector2(8, -2), Vector2(10, -2), Color.GOLD, 1)
+			draw_line(Vector2(8, 0), Vector2(10, 0), Color.GOLD, 1)
+			draw_line(Vector2(8, 2), Vector2(10, 2), Color.GOLD, 1)
+		49: # Quantum CPU
+			draw_rect(Rect2(-8, -8, 16, 16), Color(0.05, 0.05, 0.05))
+			draw_circle(center, 4, Color.WHITE)
+			draw_arc(center, 7, 0, TAU, 16, Color.CYAN, 1)
+			draw_arc(center, 9, 0, TAU, 16, Color.MAGENTA, 1)
 		
 	# Price tag
 	if price > 0:
@@ -544,6 +579,34 @@ func _apply_item(player: Node2D) -> void:
 			item_data.flat_range = 100.0
 			item_data.mult_fire_rate = 0.8
 			item_data.tear_color_override = Color(1.0, 0.6, 0.2)
+		44:
+			item_data.item_name = "L3 Cache"
+			item_data.double_shot_chance = 0.15
+			item_data.tear_color_override = Color(1.0, 0.8, 0.2)
+		45:
+			item_data.item_name = "DDR5 RAM"
+			item_data.flat_speed = 50.0
+			item_data.dash_dist_mult = 1.2
+			item_data.tear_color_override = Color(0.1, 0.5, 1.0)
+		46:
+			item_data.item_name = "Multi-Threading"
+			item_data.mult_fire_rate = 0.9
+			item_data.mult_damage = 1.1
+			item_data.tear_color_override = Color(0.6, 0.6, 0.6)
+		47:
+			item_data.item_name = "Liquid Cooling"
+			item_data.mult_fire_rate = 0.8
+			item_data.flat_speed = 20.0
+			item_data.tear_color_override = Color(0.2, 0.8, 1.0)
+		48:
+			item_data.item_name = "NVMe Storage"
+			item_data.flat_speed = 70.0
+			item_data.tear_color_override = Color.WHITE
+		49:
+			item_data.item_name = "Quantum CPU"
+			item_data.mult_damage = 1.2
+			item_data.mult_fire_rate = 0.8
+			item_data.tear_color_override = Color.CYAN
 		
 	print("Picked up ", item_data.item_name, "!")
 	stats.add_item(item_data)

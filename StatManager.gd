@@ -19,6 +19,8 @@ var speed: float
 var max_health: int
 var fire_rate: float
 var range: float
+var double_shot_chance: float = 0.0
+var dash_dist_mult: float = 1.0
 
 # Derived behaviors
 var has_homing: bool = false
@@ -102,6 +104,8 @@ func recalculate_stats() -> void:
 	has_split_on_range = false
 	has_orbital = false
 	tear_size_mult = 1.0
+	double_shot_chance = 0.0
+	dash_dist_mult = 1.0
 	current_tear_color = Color.WHITE # Or whatever default
 	active_synergies = {}
 	
@@ -140,6 +144,8 @@ func recalculate_stats() -> void:
 		if item.split_on_range: has_split_on_range = true
 		if item.is_orbital: has_orbital = true
 		tear_size_mult *= item.tear_size_mult
+		double_shot_chance += item.double_shot_chance
+		dash_dist_mult *= item.dash_dist_mult
 		
 		# Naive color override (latest item wins)
 		if item.tear_color_override != Color.WHITE:

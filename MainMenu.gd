@@ -124,17 +124,21 @@ func _show_upgrade_menu() -> void:
 		var level = SaveSystem.get_upgrade_level(up.id)
 		btn.text = up.name + " (Lv. " + str(level) + ")\n" + up.desc + "\nCOST: " + str(up.cost)
 		btn.custom_minimum_size = Vector2(300, 80)
-		btn.pressed.connect(func(): _buy_upgrade(up.id, up.cost, menu))
+		btn.pressed.connect(_on_upgrade_pressed.bind(up.id, up.cost, menu))
 		v_box.add_child(btn)
 		
 	var close_btn = Button.new()
 	close_btn.text = "BACK TO TERMINAL"
-	close_btn.pressed.connect(func(): 
-		menu.queue_free()
-		if char_select_node:
-			char_select_node.show()
-	)
+	close_btn.pressed.connect(_on_close_upgrade_menu.bind(menu))
 	v_box.add_child(close_btn)
+
+func _on_upgrade_pressed(id: String, cost: int, menu: Panel) -> void:
+	_buy_upgrade(id, cost, menu)
+
+func _on_close_upgrade_menu(menu: Panel) -> void:
+	menu.queue_free()
+	if char_select_node:
+		char_select_node.show()
 
 func _show_achievements_menu() -> void:
 	if char_select_node:

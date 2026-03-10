@@ -231,7 +231,7 @@ func handle_movement() -> void:
 	
 	var current_speed = stats.speed
 	if is_dashing:
-		current_speed *= dash_multiplier
+		current_speed *= dash_multiplier * stats.dash_dist_mult
 	
 	if snare_timer > 0:
 		current_speed = 0.0 # Rooted!
@@ -358,6 +358,13 @@ func fire_tear(direction: Vector2) -> void:
 	else:
 		_spawn_tear(direction)
 	
+	# Performance: Double Shot Chance
+	if stats.double_shot_chance > 0 and randf() < stats.double_shot_chance:
+		# Fire a secondary shot slightly behind with a small offset
+		await get_tree().create_timer(0.05).timeout
+		if is_instance_valid(self):
+			_spawn_tear(direction)
+
 	await get_tree().create_timer(stats.fire_rate).timeout
 	can_shoot = true
 

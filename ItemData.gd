@@ -44,3 +44,7 @@ class_name ItemData
 # Active Items
 @export var is_active_item: bool = false
 @export var max_charges: int = 1
+
+# Performance Upgrades
+@export var double_shot_chance: float = 0.0
+@export var dash_dist_mult: float = 1.0

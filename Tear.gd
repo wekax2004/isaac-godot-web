@@ -23,6 +23,7 @@ var is_boomerang: bool = false
 var boomerang_triggered: bool = false
 var damage_ramp: float = 0.0 # 0.1 = +10% dmg at max range
 var initial_damage: float = 0.0
+var initial_tear_size: float = 1.0
 var split_on_range: bool = false
 var is_orbital: bool = false
 var orbit_angle: float = 0.0
@@ -42,6 +43,7 @@ func _ready() -> void:
 		sprite.modulate = color_override
 	
 	initial_damage = damage
+	initial_tear_size = tear_size
 	orbit_angle = direction.angle()
 
 	var notifier = $VisibleOnScreenNotifier2D
@@ -103,7 +105,7 @@ func _physics_process(delta: float) -> void:
 		# Scale damage based on distance traveled relative to max range
 		var ramp_percent = clamp(distance_traveled / max_range, 0.0, 1.0)
 		damage = initial_damage * (1.0 + damage_ramp * ramp_percent)
-		tear_size = 1.0 + (damage_ramp * 0.5 * ramp_percent)
+		tear_size = initial_tear_size * (1.0 + damage_ramp * 0.5 * ramp_percent)
 		queue_redraw()
 
 	# Orbital logic
