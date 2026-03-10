@@ -1,7 +1,8 @@
 extends Area2D
 
 # 24 unique items with diverse effects
-const ITEM_COUNT = 36
+# 44 unique items with diverse effects
+const ITEM_COUNT = 44
 @export var item_id: int = -1
 @export var price: int = 0
 @export var price_hp: int = 0
@@ -47,6 +48,14 @@ const ITEM_DB = [
 	["Malware Suite", "Viral Infection\nChance to slow enemies on hit"],
 	["Ethernet Cable", "+200 range\nDirect connection!"],
 	["RGB Fan", "+10% Spd & Dmg\nRainbow Projectiles!"],
+	["Echo Request", "Boomerang Bullets\nProjectiles return to sender"],
+	["Signal Booster", "Signal Strength UP\nDamage increases with distance"],
+	["Fragmentation Packet", "Burst Mode\nBullets split at max range"],
+	["Cyclotron", "Orbital Shield\nBullets orbit around you"],
+	["Long-Range Wifi", "+250 Range\nConnect from anywhere"],
+	["Fiber Optic Link", "+150 Range\n+20 Speed"],
+	["Satellite Uplink", "+300 Range\n+0.5 Damage"],
+	["Signal Repeater", "+100 Range\nFast Fire UP"],
 ]
 
 func _ready() -> void:
@@ -228,6 +237,36 @@ func _draw() -> void:
 			for i in range(3):
 				var angle = i * TAU / 3 + Time.get_ticks_msec() * 0.01
 				draw_line(center, center + Vector2(cos(angle), sin(angle)) * 8, colors[i], 3)
+		36: # Echo Request (U-turn arrow)
+			draw_polyline(PackedVector2Array([Vector2(-8,-4), Vector2(4,-4), Vector2(4,4), Vector2(-8,4)]), Color.CYAN, 3)
+			draw_line(Vector2(-8, 4), Vector2(-4, 0), Color.CYAN, 3)
+			draw_line(Vector2(-8, 4), Vector2(-4, 8), Color.CYAN, 3)
+		37: # Signal Booster (Antenna)
+			draw_line(Vector2(0, 10), Vector2(0, -5), Color.GRAY, 3)
+			draw_circle(Vector2(0, -8), 3, Color.YELLOW)
+			draw_arc(Vector2(0, -8), 8, -PI, 0, 8, Color.YELLOW, 2)
+		38: # Fragmentation Packet (Cracked box)
+			draw_rect(Rect2(-7, -7, 14, 14), Color(0.4, 0.4, 0.4))
+			draw_line(Vector2(-7, -7), Vector2(7, 7), Color.WHITE, 2)
+			draw_line(Vector2(-7, 7), Vector2(7, -7), Color.WHITE, 2)
+		39: # Cyclotron (Orbital rings)
+			draw_circle(center, 4, Color.WHITE)
+			draw_arc(center, 10, 0, TAU, 16, Color.CYAN, 2)
+			draw_circle(Vector2(10, 0), 3, Color.CYAN)
+		40: # Long-Range Wifi (Signal icon)
+			for i in range(3):
+				draw_arc(center + Vector2(0, 5), 5 + i*4, -PI*0.75, -PI*0.25, 8, Color.CYAN, 2)
+			draw_circle(center + Vector2(0, 5), 2, Color.CYAN)
+		41: # Fiber Optic Link (Glowing cable)
+			draw_line(Vector2(-10, 0), Vector2(10, 0), Color.WHITE, 4)
+			draw_line(Vector2(-10, 0), Vector2(10, 0), Color.CYAN, 2)
+		42: # Satellite Uplink (Dish)
+			draw_arc(center, 8, PI, TAU, 8, Color.LIGHT_GRAY, 3)
+			draw_line(Vector2(0, 0), Vector2(0, -10), Color.RED, 2)
+		43: # Signal Repeater (Tower)
+			draw_line(Vector2(-5, 10), Vector2(0, -10), Color.GRAY, 2)
+			draw_line(Vector2(5, 10), Vector2(0, -10), Color.GRAY, 2)
+			draw_circle(Vector2(0, -10), 3, Color.ORANGE)
 		
 	# Price tag
 	if price > 0:
@@ -466,6 +505,45 @@ func _apply_item(player: Node2D) -> void:
 			item_data.mult_damage = 1.1
 			item_data.mult_speed = 1.1
 			item_data.tear_color_override = Color.from_hsv(randf(), 0.8, 1.0)
+		36:
+			item_data.item_name = "Echo Request"
+			item_data.is_boomerang = true
+			item_data.flat_range = 100.0
+			item_data.tear_color_override = Color(0.2, 0.9, 1.0)
+		37:
+			item_data.item_name = "Signal Booster"
+			item_data.damage_ramp = 0.8 # +80% dmg at max range
+			item_data.flat_range = 200.0
+			item_data.tear_color_override = Color(1.0, 1.0, 0.4)
+		38:
+			item_data.item_name = "Fragmentation Packet"
+			item_data.split_on_range = true
+			item_data.flat_range = 150.0
+			item_data.tear_color_override = Color(0.8, 0.8, 0.8)
+		39:
+			item_data.item_name = "Cyclotron"
+			item_data.is_orbital = true
+			item_data.flat_range = 300.0
+			item_data.tear_color_override = Color(0.4, 0.9, 1.0)
+		40:
+			item_data.item_name = "Long-Range Wifi"
+			item_data.flat_range = 250.0
+			item_data.tear_color_override = Color(0.2, 0.8, 1.0)
+		41:
+			item_data.item_name = "Fiber Optic Link"
+			item_data.flat_range = 150.0
+			item_data.flat_speed = 20.0
+			item_data.tear_color_override = Color(1.0, 1.0, 1.0)
+		42:
+			item_data.item_name = "Satellite Uplink"
+			item_data.flat_range = 300.0
+			item_data.flat_damage = 0.5
+			item_data.tear_color_override = Color(0.9, 0.9, 0.9)
+		43:
+			item_data.item_name = "Signal Repeater"
+			item_data.flat_range = 100.0
+			item_data.mult_fire_rate = 0.8
+			item_data.tear_color_override = Color(1.0, 0.6, 0.2)
 		
 	print("Picked up ", item_data.item_name, "!")
 	stats.add_item(item_data)

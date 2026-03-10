@@ -31,7 +31,7 @@ func _shoot() -> void:
 		var b = bullet_scene.instantiate()
 		b.global_position = global_position
 		b.direction = (player.global_position - global_position).normalized()
-		get_tree().root.add_child(b)
+		get_tree().root.call_deferred("add_child", b)
 
 func take_damage(amount: float) -> void:
 	health -= amount

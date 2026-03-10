@@ -30,7 +30,7 @@ func explode() -> void:
 	splash.global_position = global_position
 	splash.scale = Vector2(4, 4)
 	splash.color = Color(1.0, 0.4, 0.0)
-	get_tree().current_scene.add_child(splash)
+	get_tree().current_scene.call_deferred("add_child", splash)
 	
 	# Damage radius
 	var blast_radius = 120.0

@@ -107,7 +107,7 @@ func _physics_process(delta: float) -> void:
 		if Engine.get_frames_drawn() % 10 == 0 and puddle_scene:
 			var p = puddle_scene.instantiate()
 			p.global_position = global_position
-			get_parent().add_child(p)
+			get_parent().call_deferred("add_child", p)
 		
 		if global_position.distance_to(dash_target) < 10.0 or state_timer <= 0:
 			is_dashing = false
@@ -152,23 +152,27 @@ func _trigger_split() -> void:
 	scale = Vector2(0.6, 0.6)
 	move_speed += 40.0
 	
-	# Spawn a second split sibling
-	var sl = split_scene.instantiate()
-	sl.is_split = true
-	sl.health = health # Start at half health too
-	sl.max_health = max_health
-	sl.position = position + Vector2(30, 0)
-	
+	# Spawn multiple split siblings
 	var r = get_parent()
-	r.call_deferred("add_child", sl)
+	var spawned_slimes = []
+	var sl_count = 2
+	for i in range(sl_count):
+		var sl = split_scene.instantiate()
+		sl.is_split = true
+		sl.max_health = max_health # Inherit original max health, _ready will adjust for split
+		sl.health = max_health / 2.0 # Start at half of the original boss's max health
+		sl.position = position + Vector2(randf_range(-40, 40), randf_range(-40, 40))
+		r.call_deferred("add_child", sl)
+		spawned_slimes.append(sl)
 	
 	# Delay registering to the room to avoid threading crashes
 	await get_tree().process_frame
 	if r and "spawned_enemy_nodes" in r:
-		r.spawned_enemy_nodes.append(sl)
-		# Manually hook its death if it happens to be the last one alive
-		if sl.has_signal("boss_defeated") and r.has_method("_on_boss_defeated"):
-			sl.boss_defeated.connect(r._on_boss_defeated)
+		for s in spawned_slimes:
+			if not is_instance_valid(s): continue
+			r.spawned_enemy_nodes.append(s)
+			if s.has_signal("boss_defeated") and r.has_method("_on_boss_defeated"):
+				s.boss_defeated.connect(r._on_boss_defeated)
 
 func die() -> void:
 	SFX.play_explosion()

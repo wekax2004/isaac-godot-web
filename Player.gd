@@ -119,6 +119,16 @@ func _on_familiar_added(item: ItemData) -> void:
 		fam.type = 1 # FamiliarType.FOLLOWER
 		fam.follow_lag = 0.3
 		fam.shoot_cooldown = 1.0
+	elif item.familiar_name == "Defense Matrix":
+		fam.type = 0 # FamiliarType.ORBITAL
+		fam.orbit_speed = 4.0
+		fam.orbit_radius = 55.0
+		fam.contact_damage = 2.0
+		fam.is_blocking = true
+	elif item.familiar_name == "Spectral Drone":
+		fam.type = 1 # FamiliarType.FOLLOWER
+		fam.follow_lag = 0.4
+		fam.shoot_cooldown = 1.2
 		
 	# Spawn at player position
 	fam.global_position = global_position
@@ -249,7 +259,7 @@ func _leave_coolant_trail() -> void:
 		inst.damage = stats.damage * 5.0 # Massive tick damage to enemies
 		inst.lifetime = 1.0 # Disappears quickly behind you
 		
-		get_parent().add_child(inst)
+		get_parent().call_deferred("add_child", inst)
 
 func _start_dash() -> void:
 	is_dashing = true
@@ -291,7 +301,7 @@ func _leave_corruption_trail() -> void:
 	visual.color = Color(0.2, 0.8, 1.0, 0.6)
 	glitch.add_child(visual)
 	
-	get_parent().add_child(glitch)
+	get_parent().call_deferred("add_child", glitch)
 	
 	# Damage logic
 	glitch.body_entered.connect(func(body):
@@ -364,6 +374,10 @@ func _spawn_tear(dir: Vector2) -> void:
 	bullet.is_explosive = stats.has_explosive
 	bullet.is_parasite = stats.has_parasite
 	bullet.is_rubber_cement = stats.has_rubber_cement
+	bullet.is_boomerang = stats.has_boomerang
+	bullet.damage_ramp = stats.damage_ramp
+	bullet.split_on_range = stats.has_split_on_range
+	bullet.is_orbital = stats.has_orbital
 	# Tears scale with damage: base 3.5 = 1.0x, higher damage = bigger tears
 	var damage_scale = clampf(stats.damage / 3.5, 0.8, 3.0)
 	bullet.tear_size = stats.tear_size_mult * damage_scale
@@ -404,10 +418,7 @@ func _spawn_laser(dir: Vector2) -> void:
 	laser.is_explosive = stats.has_explosive
 	laser.is_homing = stats.has_homing or stats.has_synergy("laser_homing")
 	
-	if stats.has_synergy("laser_homing"):
-		laser.color = Color(1.0, 0.1, 1.0) # Pink/Magenta for synergy
-	
-	add_child(laser)
+	call_deferred("add_child", laser)
 
 func fire_knife(direction: Vector2) -> void:
 	if not knife_scene: return
@@ -497,10 +508,7 @@ func _spawn_brimstone_laser(dir: Vector2) -> void:
 	laser.color = Color(0.8, 0.1, 0.1)
 	laser.max_range = stats.range * 1.5
 	laser.duration = 0.3 # stays longer
-	laser.width = 12.0 # thicker
-	laser.is_homing = stats.has_homing
-	
-	add_child(laser)
+	call_deferred("add_child", laser)
 
 # --- NEW: Taking Damage Logic ---
 func snare(duration: float) -> void:

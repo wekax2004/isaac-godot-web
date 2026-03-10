@@ -18,6 +18,16 @@ var color_override: Color = Color.WHITE
 var can_split: bool = true # Prevent infinite recursion
 var has_explosive_ricochet: bool = false
 
+# NEW: Interesting Range Mechanics
+var is_boomerang: bool = false
+var boomerang_triggered: bool = false
+var damage_ramp: float = 0.0 # 0.1 = +10% dmg at max range
+var initial_damage: float = 0.0
+var split_on_range: bool = false
+var is_orbital: bool = false
+var orbit_angle: float = 0.0
+var trail_timer: float = 0.0
+
 var splash_scene: PackedScene = preload("res://HitSplash.tscn")
 
 @export var shoot_sound: AudioStream # E.g., a "pew.wav"
@@ -30,10 +40,21 @@ func _ready() -> void:
 	# Apply visual item synergy changes
 	if sprite and color_override != Color.WHITE:
 		sprite.modulate = color_override
+	
+	initial_damage = damage
+	orbit_angle = direction.angle()
 
 	var notifier = $VisibleOnScreenNotifier2D
 	if notifier:
 		notifier.screen_exited.connect(_on_screen_exited)
+		
+	# ALIGN HITBOX: Scale collision shape to match the visual glow radius (6.0 * tear_size)
+	if has_node("CollisionShape2D"):
+		var shape_node = $CollisionShape2D
+		if shape_node.shape is CircleShape2D:
+			# Use a unique shape resource so we don't modify other tears
+			shape_node.shape = shape_node.shape.duplicate()
+			shape_node.shape.radius = 6.0 * tear_size
 		
 	area_entered.connect(_on_area_entered)
 		
@@ -60,8 +81,6 @@ func _draw() -> void:
 	# Bright core
 	draw_circle(Vector2.ZERO, 2 * s, Color(1.0, 1.0, 0.8))
 
-var trail_timer: float = 0.0
-
 func _physics_process(delta: float) -> void:
 	# Toxic Trail synergy
 	if is_piercing and is_poison:
@@ -79,12 +98,41 @@ func _physics_process(delta: float) -> void:
 			# Curve trajectory toward the enemy (slerp or lerp direction)
 			direction = direction.lerp(dir_to_target, delta * 5.0).normalized()
 			
-	var step = direction * speed * delta
-	position += step
-	distance_traveled += step.length()
+	# Damage Ramping logic
+	if damage_ramp != 0:
+		# Scale damage based on distance traveled relative to max range
+		var ramp_percent = clamp(distance_traveled / max_range, 0.0, 1.0)
+		damage = initial_damage * (1.0 + damage_ramp * ramp_percent)
+		tear_size = 1.0 + (damage_ramp * 0.5 * ramp_percent)
+		queue_redraw()
+
+	# Orbital logic
+	if is_orbital:
+		orbit_angle += delta * 5.0
+		var orbit_radius = distance_traveled + 50.0
+		var player = get_tree().get_first_node_in_group("player")
+		if player:
+			global_position = player.global_position + Vector2(cos(orbit_angle), sin(orbit_angle)) * orbit_radius
+			distance_traveled += delta * speed * 0.2 # slower progression
+		else:
+			position += direction * speed * delta
+			distance_traveled += (direction * speed * delta).length()
+	else:
+		var step = direction * speed * delta
+		position += step
+		distance_traveled += step.length()
 	
 	# Tear falls and splashes if it travels too far
 	if distance_traveled >= max_range:
+		if is_boomerang and not boomerang_triggered:
+			boomerang_triggered = true
+			direction = -direction
+			distance_traveled = 0 # reset to allow return
+			return
+			
+		if split_on_range:
+			_split_tears()
+			
 		call_deferred("queue_free")
 
 func _find_closest_node(nodes: Array) -> Node2D:
@@ -217,7 +265,7 @@ func _explode() -> void:
 		splash.global_position = global_position
 		splash.scale = Vector2(3, 3)
 		splash.color = Color(1.0, 0.4, 0.0)
-		get_tree().current_scene.add_child(splash)
+		get_tree().current_scene.call_deferred("add_child", splash)
 
 func _spawn_poison_cloud() -> void:
 	if splash_scene:

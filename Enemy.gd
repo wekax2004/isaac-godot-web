@@ -477,10 +477,10 @@ func _ai_glitch_wraith(delta: float) -> void:
 		phase_timer = 1.2 if is_phasing else 2.0
 		if is_phasing:
 			modulate.a = 0.2
-			collision_layer = 0 # Phase through things? 
+			set_deferred("collision_layer", 0) # Phase through things? 
 		else:
 			modulate.a = 1.0
-			collision_layer = 4 # Reset to enemy layer
+			set_deferred("collision_layer", 4) # Reset to enemy layer
 			
 	if is_teleporting:
 		teleport_warning_timer -= delta

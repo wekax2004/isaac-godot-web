@@ -53,7 +53,7 @@ func explode() -> void:
 		splash.global_position = global_position
 		splash.scale = Vector2(4, 4) # HUGE
 		splash.color = Color(0.0, 0.8, 1.0) # Digital burst cyan
-		get_tree().current_scene.add_child(splash)
+		get_tree().current_scene.call_deferred("add_child", splash)
 		
 	# 2. Deal AoE Damage (Radius 120 pixels)
 	var blast_radius = 120.0

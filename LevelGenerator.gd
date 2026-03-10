@@ -188,7 +188,7 @@ func generate_floor(keep_player: bool = false, override_name: String = "") -> vo
 	if shop_room_pos != null and room_grid.has(shop_room_pos):
 		room_grid[shop_room_pos].is_shop_room = true
 		
-	# 2.5.5 NPC & Buffer Rooms (Synergy for v1.5.0)
+	# 2.5.5 NPC & Buffer Rooms (Synergy for v1.5.3)
 	var npc_room_pos = null
 	var buffer_room_pos = null
 	
@@ -289,18 +289,13 @@ func generate_floor(keep_player: bool = false, override_name: String = "") -> vo
 	camera_target_pos = Vector2.ZERO
 	camera.z_index = 20 # Keep above everything
 	call_deferred("add_child", camera)
+	
+	# Initialize limits for start room
+	_update_camera_limits(Vector2.ZERO)
 
 # --- Camera System ---
 func _process(delta: float) -> void:
-	
 	if camera:
-		# Very smooth camera movement (Isaac style)
-		var lerp_speed = 6.0
-		if camera.global_position.distance_to(camera_target_pos) > 100:
-			lerp_speed = 12.0 # Snap faster if we "teleport" or move far
-			
-		camera.global_position = camera.global_position.lerp(camera_target_pos, lerp_speed * delta)
-		
 		# Screen shake logic
 		if shake_duration > 0:
 			shake_duration -= delta
@@ -315,18 +310,52 @@ func shake_camera(intensity: float = 20.0, duration: float = 0.2) -> void:
 	shake_duration = duration
 
 func _on_room_entered(grid_pos: Vector2) -> void:
-	if hud_instance:
-		var closest_pos = grid_pos
+	if not camera: return
+	
+	var closest_pos = grid_pos
+	var target_pos = closest_pos * room_size
+	
+	if closest_pos == last_room_pos: return
+	
+	# Transition Logic
+	last_room_pos = closest_pos
+	
+	# Update HUD
+	if hud_instance and hud_instance.has_method("update_minimap"):
+		hud_instance.update_minimap(self, closest_pos)
 		
-		# If we changed rooms, update the HUD minimap!
-		if closest_pos != last_room_pos:
-			last_room_pos = closest_pos
-			if hud_instance.has_method("update_minimap"):
-				hud_instance.update_minimap(self, closest_pos)
+	# KILL current tweens to prevent overlapping transitions
+	var tween = create_tween().set_parallel(false).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	
+	# 1. Reset limits to HUGE to allow free movement between rooms during slide
+	camera.limit_left = -1000000
+	camera.limit_top = -1000000
+	camera.limit_right = 1000000
+	camera.limit_bottom = 1000000
+	
+	# 2. Slide the camera
+	tween.tween_property(camera, "global_position", target_pos, 0.4)
+	
+	# 3. Upon arrival, lock limits and spawn enemies
+	tween.tween_callback(func():
+		_update_camera_limits(closest_pos)
+		var room = room_grid.get(closest_pos)
+		if room and not room.enemies_spawned:
+			room.spawn_enemies()
+	)
 		
-		# Set camera target to newly populated closest pos
-		var target_pos = closest_pos * room_size
-		camera_target_pos = target_pos
+
+func _update_camera_limits(grid_pos: Vector2) -> void:
+	if not camera: return
+	
+	var center = grid_pos * room_size
+	var half_size = room_size / 2.0
+	
+	# Set strict bounds for the current room
+	camera.limit_left = int(center.x - half_size.x)
+	camera.limit_top = int(center.y - half_size.y)
+	camera.limit_right = int(center.x + half_size.x)
+	camera.limit_bottom = int(center.y + half_size.y)
 
 func _find_secret_room_position():
 	# Find an empty position adjacent to 2+ existing rooms

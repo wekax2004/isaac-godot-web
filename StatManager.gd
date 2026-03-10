@@ -31,6 +31,10 @@ var has_parasite: bool = false
 var has_rubber_cement: bool = false
 var has_poison: bool = false
 var has_explosive: bool = false
+var has_boomerang: bool = false
+var damage_ramp: float = 0.0
+var has_split_on_range: bool = false
+var has_orbital: bool = false
 var tear_size_mult: float = 1.0
 var current_tear_color: Color = Color.WHITE
 var active_synergies: Dictionary = {}
@@ -93,6 +97,10 @@ func recalculate_stats() -> void:
 	has_rubber_cement = false
 	has_poison = false
 	has_explosive = false
+	has_boomerang = false
+	damage_ramp = 0.0
+	has_split_on_range = false
+	has_orbital = false
 	tear_size_mult = 1.0
 	current_tear_color = Color.WHITE # Or whatever default
 	active_synergies = {}
@@ -127,6 +135,10 @@ func recalculate_stats() -> void:
 		if item.is_rubber_cement: has_rubber_cement = true
 		if item.is_poison: has_poison = true
 		if item.is_explosive: has_explosive = true
+		if item.is_boomerang: has_boomerang = true
+		damage_ramp += item.damage_ramp
+		if item.split_on_range: has_split_on_range = true
+		if item.is_orbital: has_orbital = true
 		tear_size_mult *= item.tear_size_mult
 		
 		# Naive color override (latest item wins)

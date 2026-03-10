@@ -30,4 +30,4 @@ func spawn_sparks(pos: Vector2, color: Color = Color.WHITE, count: int = 5) -> v
 		s.global_position = pos + Vector2(randf_range(-10, 10), randf_range(-10, 10))
 		s.scale = Vector2(0.5, 0.5)
 		s.color = color
-		get_tree().current_scene.add_child(s)
+		get_tree().current_scene.call_deferred("add_child", s)

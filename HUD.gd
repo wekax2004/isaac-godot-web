@@ -20,8 +20,23 @@ func _ready() -> void:
 	add_to_group("hud")
 	if AchievementManager:
 		AchievementManager.achievement_unlocked.connect(_on_achievement_unlocked)
+	
+	# Glitch System UI
+	if GlitchManager:
+		GlitchManager.glitch_triggered.connect(_on_glitch_triggered)
+		GlitchManager.glitch_ended.connect(_on_glitch_ended)
+		
 	# Will redraw UI whenever needed
 	$"HUD_UI".queue_redraw()
+
+func _on_glitch_ended(type: String) -> void:
+	popup_messages.append({
+		"text": "SYSTEM RESTORED",
+		"desc": type + " RESOLVED",
+		"lifetime": 3.0,
+		"y_offset": -100.0,
+		"color": Color.CYAN
+	})
 
 func _process(delta: float) -> void:
 	# Always redraw for hover tooltips and popups
@@ -119,8 +134,6 @@ func register_boss(boss: Node2D) -> void:
 		boss.health_changed.connect(_on_boss_health_changed)
 	if not boss.boss_defeated.is_connected(_on_boss_defeated):
 		boss.boss_defeated.connect(_on_boss_defeated)
-		
-	GlitchManager.glitch_triggered.connect(_on_glitch_triggered)
 	$"HUD_UI".queue_redraw()
 
 func _on_glitch_triggered(type: String, duration: float) -> void:
@@ -236,7 +249,7 @@ func _on_hud_ui_draw() -> void:
 		
 		# Version Number (Bottom Right)
 		var screen_height = get_viewport().get_visible_rect().size.y
-		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.5.1", 0, -1, 12, Color(1, 1, 1, 0.5))
+		ui.draw_string(ThemeDB.fallback_font, Vector2(screen_width - 80, screen_height - 10), "v1.5.3", 0, -1, 12, Color(1, 1, 1, 0.5))
 		
 		# Collect explored positions for adjacency check
 		var explored_set = {}

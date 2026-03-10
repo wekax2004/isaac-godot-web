@@ -82,7 +82,7 @@ func _physics_process(delta: float) -> void:
 
 func _find_closest(nodes: Array) -> Node2D:
 	var closest: Node2D = null
-	var min_dist = 400.0 # Aggro range
+	var min_dist = 600.0 # Increased aggro range from 400
 	for n in nodes:
 		if is_instance_valid(n):
 			var dist = global_position.distance_to(n.global_position)
@@ -105,7 +105,7 @@ func _shoot_at(target: Node2D) -> void:
 		bullet.color_override = Color(0.8, 0.9, 1.0, 0.7)
 		bullet.modulate = Color(1.0, 1.0, 1.0, 0.7)
 		
-	get_tree().root.add_child(bullet)
+	get_tree().current_scene.call_deferred("add_child", bullet)
 
 func _on_body_entered(body: Node2D) -> void:
 	if contact_damage > 0:

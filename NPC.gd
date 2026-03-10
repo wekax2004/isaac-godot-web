@@ -8,6 +8,21 @@ var interaction_label: String = "[E] INTERACT"
 
 func _ready() -> void:
 	add_to_group("npcs")
+	
+	# Safety check: Ensure we have a collision shape for Area2D detection
+	var has_shape = false
+	for child in get_children():
+		if child is CollisionShape2D:
+			has_shape = true
+			break
+	
+	if not has_shape:
+		var shape = CollisionShape2D.new()
+		var rect = RectangleShape2D.new()
+		rect.size = Vector2(64, 64)
+		shape.shape = rect
+		add_child(shape)
+		
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 	

@@ -33,7 +33,7 @@ func _execute_trade(player) -> void:
 	var high_tier_ids = [7, 12, 19, 21, 25, 31]
 	item.item_id = high_tier_ids.pick_random()
 	
-	get_parent().add_child(item)
+	get_parent().call_deferred("add_child", item)
 	
 	# HUD.show_popup("CONNECTION ESTABLISHED: DATA ACQUIRED")
 	pass

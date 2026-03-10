@@ -30,6 +30,10 @@ class_name ItemData
 @export var is_brimstone: bool = false
 @export var is_parasite: bool = false
 @export var is_rubber_cement: bool = false
+@export var is_boomerang: bool = false
+@export var damage_ramp: float = 0.0 # 0.0 = none, positive = increase with dist, negative = falloff
+@export var split_on_range: bool = false
+@export var is_orbital: bool = false
 @export var tear_size_mult: float = 1.0
 @export var tear_color_override: Color = Color.WHITE
 

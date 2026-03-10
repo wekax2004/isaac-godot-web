@@ -56,14 +56,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -120.0
-offset_top = 100.0
-offset_right = 120.0
-offset_bottom = 160.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 32
-text = "PLAY GAME"
+text = "EXECUTE"
 
 [node name="VersionLabel" type="Label" parent="."]
 offset_left = 10.0

@@ -153,7 +153,8 @@ func _setup_entry_detection() -> void:
 	area.collision_mask = 1 # Player layer
 	var shape = CollisionShape2D.new()
 	var rect = RectangleShape2D.new()
-	rect.size = Vector2(1280, 720) # Detection zone full room size
+	# HIGHER SENSITIVITY: Trigger entry as soon as player touches the room boundary
+	rect.size = Vector2(1260, 700) 
 	shape.shape = rect
 	area.add_child(shape)
 	add_child(area)
@@ -162,7 +163,7 @@ func _setup_entry_detection() -> void:
 func _build_collisions() -> void:
 	walls_body = StaticBody2D.new()
 	walls_body.collision_layer = 1 # Ensure player (mask 1) collides
-	add_child(walls_body)
+	call_deferred("add_child", walls_body)
 	
 	var half_w = 640.0
 	var half_h = 360.0
@@ -323,25 +324,15 @@ func _on_player_body_entered(body: Node2D) -> void:
 			hud.set_player_stats(body.stats)
 			hud._on_player_health_changed(body.current_health, body.stats.max_health)
 			hud._on_bandwidth_changed(body.bandwidth)
+			# Revert to 1.5.0 minimap call
 			hud.update_minimap(level_gen, grid_pos)
 		
 		if not is_cleared and not enemies_spawned:
-			# Isaac-style: Spawn enemies when player is deep enough in or after a tiny delay
-			# For now, trigger immediately upon the camera snapping
-			_check_spawn_trigger()
+			# Spawning is now triggered by LevelGenerator for instant action,
+			# but we keep a safety check here in case of direct entry.
+			pass
 
-func _check_spawn_trigger() -> void:
-	if enemies_spawned or is_cleared: return
-	var cam = get_viewport().get_camera_2d()
-	if cam and cam.global_position.distance_to(global_position) < 50.0:
-		# Grace period: Wait 0.4s to ensure player is fully inside before locking doors
-		await get_tree().create_timer(0.4).timeout
-		if is_instance_valid(self):
-			spawn_enemies()
-	else:
-		# Retry in a few frames
-		await get_tree().process_frame
-		_check_spawn_trigger()
+# Spawning is now handled by LevelGenerator signal or direct call
 
 func _draw() -> void:
 	var half_w = 640.0
@@ -503,15 +494,15 @@ func spawn_enemies() -> void:
 		var item = item_scene.instantiate()
 		item.position = Vector2(0, -10)
 		item.item_id = _get_unique_item_id()
-		add_child(item)
+		call_deferred("add_child", item)
 		_on_room_cleared()
 		
 	elif is_npc_room:
 		var npc_script = load("res://RogueAI.gd")
-		var npc = Node2D.new()
+		var npc = Area2D.new()
 		npc.set_script(npc_script)
 		npc.position = Vector2.ZERO
-		add_child(npc)
+		call_deferred("add_child", npc)
 		_on_room_cleared()
 		
 	elif is_buffer_room:
@@ -540,7 +531,7 @@ func spawn_enemies() -> void:
 			if store_node:
 				var x_offset = -100 + (i * 100)
 				store_node.position = Vector2(x_offset, -10)
-				add_child(store_node)
+				call_deferred("add_child", store_node)
 				
 		_on_room_cleared()
 		
@@ -556,7 +547,7 @@ func spawn_enemies() -> void:
 				
 				var x_offset = -60 + (i * 120) if items_to_spawn > 1 else 0
 				store_node.position = Vector2(x_offset, -10)
-				add_child(store_node)
+				call_deferred("add_child", store_node)
 				
 		_on_room_cleared()
 		
@@ -565,7 +556,7 @@ func spawn_enemies() -> void:
 		var item = item_scene.instantiate()
 		item.position = Vector2(0, -10)
 		item.item_id = _get_unique_item_id(3, 23) # Only synergy/rare/familiar/active items
-		add_child(item)
+		call_deferred("add_child", item)
 		_on_room_cleared()
 		
 	elif enemy_scene:
@@ -738,7 +729,7 @@ func _spawn_wave_enemies() -> void:
 		var enemy = enemy_scene.instantiate()
 		# Random position
 		enemy.position = Vector2(randf_range(-450, 450), randf_range(-250, 250))
-		add_child(enemy)
+		call_deferred("add_child", enemy)
 		enemy.enemy_died.connect(_on_enemy_defeated)
 		spawned_enemy_nodes.append(enemy)
 
@@ -769,6 +760,6 @@ func _on_buffer_cleared() -> void:
 		var item = item_scene.instantiate()
 		item.position = Vector2((i - 0.5) * 120.0, 0)
 		item.item_id = _get_unique_item_id()
-		add_child(item)
+		call_deferred("add_child", item)
 	
 	_on_room_cleared()

@@ -9,7 +9,7 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	
 	if has_node("VersionLabel"):
-		$VersionLabel.text = "VER: 1.5.1 (STABILITY PATCH)"
+		$VersionLabel.text = "VER: 1.5.3 (STABILITY PATCH)"
 	
 	_setup_character_select()
 
@@ -20,17 +20,23 @@ func _setup_character_select() -> void:
 	var container = VBoxContainer.new()
 	char_select_node = container
 	container.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	container.position += Vector2(0, 100) # Move below main title
+	container.set_pivot_offset(Vector2(200, 200))
+	container.position.y += 100 # Adjust vertical position
 	add_child(container)
 	
+	# Title-like character name
 	char_label = Label.new()
 	char_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	char_label.add_theme_font_size_override("font_size", 32)
 	container.add_child(char_label)
+	
+	# Spacer
+	container.add_child(Control.new())
 	
 	desc_label = Label.new()
 	desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_label.custom_minimum_size = Vector2(400, 0)
+	desc_label.custom_minimum_size = Vector2(400, 100)
 	container.add_child(desc_label)
 	
 	var btn_hbox = HBoxContainer.new()
@@ -38,26 +44,41 @@ func _setup_character_select() -> void:
 	container.add_child(btn_hbox)
 	
 	var prev_btn = Button.new()
-	prev_btn.text = "< PREV"
+	prev_btn.text = " < "
+	prev_btn.custom_minimum_size = Vector2(60, 40)
 	prev_btn.pressed.connect(_on_prev_char)
 	btn_hbox.add_child(prev_btn)
 	
+	# Re-parent the PlayButton into the container to prevent overlapping
+	var play_btn = get_node("PlayButton")
+	if play_btn:
+		play_btn.get_parent().remove_child(play_btn)
+		btn_hbox.add_child(play_btn)
+		play_btn.custom_minimum_size = Vector2(200, 60)
+		play_btn.text = "EXECUTE"
+	
 	var next_btn = Button.new()
-	next_btn.text = "NEXT >"
+	next_btn.text = " > "
+	next_btn.custom_minimum_size = Vector2(60, 40)
 	next_btn.pressed.connect(_on_next_char)
 	btn_hbox.add_child(next_btn)
 	
+	# Second HBox for secondary buttons
+	var second_hbox = HBoxContainer.new()
+	second_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	container.add_child(second_hbox)
+	
 	var upgrade_btn = Button.new()
-	upgrade_btn.text = "[ PERSISTENT UPGRADES ]"
-	upgrade_btn.custom_minimum_size = Vector2(250, 40)
+	upgrade_btn.text = "[ UPGRADES ]"
+	upgrade_btn.custom_minimum_size = Vector2(150, 40)
 	upgrade_btn.pressed.connect(_show_upgrade_menu)
-	container.add_child(upgrade_btn)
+	second_hbox.add_child(upgrade_btn)
 	
 	var achievements_btn = Button.new()
-	achievements_btn.text = "[ CYBER ACHIEVEMENTS ]"
-	achievements_btn.custom_minimum_size = Vector2(250, 40)
+	achievements_btn.text = "[ ACHIEVEMENTS ]"
+	achievements_btn.custom_minimum_size = Vector2(150, 40)
 	achievements_btn.pressed.connect(_show_achievements_menu)
-	container.add_child(achievements_btn)
+	second_hbox.add_child(achievements_btn)
 	
 	_update_char_preview()
 
@@ -220,12 +241,20 @@ func _update_char_preview() -> void:
 		desc_label.text = "ERROR: ACCESS DENIED\nREQUIREMENT: UNLOCK " + req + " ACHIEVEMENT"
 		char_label.modulate = Color(0.4, 0.4, 0.4)
 		
-	# Find start button in children or by name
-	for child in get_children():
-		if child is Button and (child.text.contains("EXECUTE") or child.text.contains("LOCKED")):
-			child.disabled = not is_unlocked
-			child.text = "EXECUTE: " + c.character_name if is_unlocked else "SYSTEM LOCKED"
-			break
+	# Find start button in container
+	var play_btn = get_node_or_null("PlayButton")
+	# If we re-parented it, it's now in the HBox
+	if not play_btn:
+		for child in char_select_node.get_children():
+			if child is HBoxContainer:
+				for subchild in child.get_children():
+					if subchild is Button and (subchild.text.contains("EXECUTE") or subchild.text.contains("LOCKED")):
+						play_btn = subchild
+						break
+	
+	if play_btn:
+		play_btn.disabled = not is_unlocked
+		play_btn.text = "EXECUTE" if is_unlocked else "SYSTEM LOCKED"
 
 func _on_play_button_pressed() -> void:
 	get_tree().change_scene_to_file("res://LevelGenerator.tscn")
